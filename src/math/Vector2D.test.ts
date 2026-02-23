@@ -1,9 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { Vector2D } from "./Vector2D.ts";
 
-const EPSILON = 1e-10;
-const near = (a: number, b: number) => Math.abs(a - b) < EPSILON;
-
 describe("Vector2D — construction", () => {
   test("stores x and y", () => {
     const v = new Vector2D(3, 4);

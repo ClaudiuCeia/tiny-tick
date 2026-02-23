@@ -129,8 +129,12 @@ export class TransformComponent extends Component {
   }
 
   public printAnchorChain(): void {
-    let current: TransformComponent | null = this;
+    let current: TransformComponent | null = this.parent;
     const chain: string[] = [];
+    {
+      const { position, rotation, scale } = this._transform;
+      chain.push(`(${position.x}, ${position.y}) r=${rotation} s=${scale}`);
+    }
     while (current) {
       const { position, rotation, scale } = current._transform;
       chain.push(`(${position.x}, ${position.y}) r=${rotation} s=${scale}`);

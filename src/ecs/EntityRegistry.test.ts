@@ -4,7 +4,6 @@ import { EcsRuntime } from "./EcsRuntime.ts";
 
 class Alpha extends Entity {}
 class Beta extends Entity {}
-class Gamma extends Alpha {} // subclass — important for instanceof
 
 const registry = () => EcsRuntime.getCurrent().registry;
 
@@ -71,7 +70,7 @@ describe("EntityRegistry — queries", () => {
   });
 
   test("getFirstEntityByType returns one entity", () => {
-    const a = new Alpha();
+    new Alpha();
     new Alpha();
     const result = registry().getFirstEntityByType(Alpha);
     expect(result).toBeInstanceOf(Alpha);
@@ -90,7 +89,7 @@ describe("EntityRegistry — queries", () => {
   });
 
   test("findEntities filters by predicate", () => {
-    const a = new Alpha();
+    new Alpha();
     const b = new Beta();
     const result = registry().findEntities((e) => e instanceof Beta);
     expect(result).toHaveLength(1);

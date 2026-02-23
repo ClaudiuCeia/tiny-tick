@@ -1,5 +1,4 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { Entity } from "../ecs/Entity.ts";
 import { EcsRuntime } from "../ecs/EcsRuntime.ts";
 import { TransformComponent } from "../transform/TransformComponent.ts";
 import { Vector2D } from "../math/Vector2D.ts";
@@ -7,8 +6,6 @@ import { CollisionEntity } from "./CollisionEntity.ts";
 import { RectangleCollisionShape } from "./shapes/RectangleCollisionShape.ts";
 import { CircleCollisionShape } from "./shapes/CircleCollisionShape.ts";
 import { CurveCollisionShape } from "./shapes/CurveCollisionShape.ts";
-
-class Node extends Entity {}
 
 beforeEach(() => {
   EcsRuntime.reset();

@@ -217,11 +217,8 @@ export abstract class Entity implements IWithUpdate, IAwakable {
   }
 
   public getRoot(): Entity {
-    let root: Entity = this;
-    while (root.parent) {
-      root = root.parent;
-    }
-    return root;
+    if (!this.parent) return this;
+    return this.parent.getRoot();
   }
 
   public get isAwake(): boolean {
@@ -238,8 +235,8 @@ export abstract class Entity implements IWithUpdate, IAwakable {
 
     this._runtime.registry.unregister(this);
 
-    for (const child of [...this._children]) {
-      child.destroy();
+    while (this._children.length > 0) {
+      this._children[0]!.destroy();
     }
     this._children.length = 0;
 
@@ -259,8 +256,8 @@ export abstract class Entity implements IWithUpdate, IAwakable {
   }
 
   public printHeritageChain(): void {
-    let current: Entity | null = this;
-    const chain: string[] = [];
+    let current: Entity | null = this.parent;
+    const chain: string[] = [this.constructor.name];
     while (current) {
       chain.push(current.constructor.name);
       current = current.parent;
@@ -269,10 +266,6 @@ export abstract class Entity implements IWithUpdate, IAwakable {
   }
 
   public getOldestAncestor(): Entity {
-    let current: Entity | null = this;
-    while (current?.parent) {
-      current = current.parent;
-    }
-    return current!;
+    return this.getRoot();
   }
 }
