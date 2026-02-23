@@ -1,6 +1,6 @@
 {
   "name": "@claudiu-ceia/tiny-tick",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tiny runtime-scoped game playground toolkit.",
   "homepage": "https://github.com/ClaudiuCeia/ecs#readme",
   "bugs": {
