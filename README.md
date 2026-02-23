@@ -48,6 +48,8 @@ Scripts:
 - `bun run test`
 - `bun run test:coverage`
 - `bun run check`
+- `bun run example:bouncy-arena`
+- `bun run example:dino-runner`
 
 ## License
 
