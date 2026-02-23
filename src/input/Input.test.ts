@@ -19,13 +19,19 @@ const makeTarget = (handlers: HandlerMap): EventTarget =>
     },
   }) as unknown as EventTarget;
 
+const emit = (handlers: HandlerMap, type: string, event: any): void => {
+  for (const fn of handlers[type] ?? []) {
+    fn(event);
+  }
+};
+
 describe("InputManager", () => {
   test("tracks key down / pressed / released transitions", () => {
     const handlers: HandlerMap = {};
     const input = new InputManager();
     input.init(makeTarget(handlers));
 
-    handlers.keydown?.forEach((fn) => fn({ key: "Space" }));
+    emit(handlers, "keydown", { key: "Space" });
     expect(input.isDown("Space")).toBe(true);
     expect(input.isPressed("Space")).toBe(true);
 
@@ -33,25 +39,102 @@ describe("InputManager", () => {
     expect(input.isPressed("Space")).toBe(false);
     expect(input.isDown("Space")).toBe(true);
 
-    handlers.keyup?.forEach((fn) => fn({ key: "Space" }));
+    emit(handlers, "keyup", { key: "Space" });
     expect(input.isDown("Space")).toBe(false);
     expect(input.isReleased("Space")).toBe(true);
   });
 
-  test("mouse move and click are tracked and click clears per frame", () => {
+  test("mouse button down / pressed / released transitions are tracked", () => {
     const handlers: HandlerMap = {};
     const input = new InputManager();
     input.init(makeTarget(handlers));
 
-    handlers.mousemove?.forEach((fn) => fn({ clientX: 111, clientY: 222 }));
-    expect(input.getMousePos().x).toBe(111);
-    expect(input.getMousePos().y).toBe(222);
+    emit(handlers, "mousedown", { button: 0 });
+    expect(input.isMouseDown()).toBe(true);
+    expect(input.isMouseDown(0)).toBe(true);
+    expect(input.isMousePressed()).toBe(true);
+    expect(input.isMousePressed(0)).toBe(true);
+    expect(input.isMousePressed(2)).toBe(false);
 
-    handlers.click?.forEach((fn) => fn({}));
+    input.clearFrame();
+    expect(input.isMousePressed()).toBe(false);
+    expect(input.isMouseDown(0)).toBe(true);
+
+    emit(handlers, "mouseup", { button: 0 });
+    expect(input.isMouseDown(0)).toBe(false);
+    expect(input.isMouseReleased()).toBe(true);
+    expect(input.isMouseReleased(0)).toBe(true);
+  });
+
+  test("mouse move updates position and frame delta", () => {
+    const handlers: HandlerMap = {};
+    const input = new InputManager();
+    input.init(makeTarget(handlers));
+
+    emit(handlers, "mousemove", { clientX: 111, clientY: 222, buttons: 0 });
+    expect(input.getMouseDelta().x).toBe(111);
+    expect(input.getMouseDelta().y).toBe(222);
+
+    emit(handlers, "mousemove", { clientX: 120, clientY: 225, buttons: 0 });
+    expect(input.getMousePos().x).toBe(120);
+    expect(input.getMousePos().y).toBe(225);
+    expect(input.getMouseDelta().x).toBe(120);
+    expect(input.getMouseDelta().y).toBe(225);
+
+    input.clearFrame();
+    expect(input.getMouseDelta().x).toBe(0);
+    expect(input.getMouseDelta().y).toBe(0);
+    expect(input.getMousePos().x).toBe(120);
+    expect(input.getMousePos().y).toBe(225);
+  });
+
+  test("mouse click remains tracked and clears per frame", () => {
+    const handlers: HandlerMap = {};
+    const input = new InputManager();
+    input.init(makeTarget(handlers));
+
+    emit(handlers, "click", {});
     expect(input.isMouseClick()).toBe(true);
 
     input.clearFrame();
     expect(input.isMouseClick()).toBe(false);
+  });
+
+  test("wheel delta accumulates in frame and resets in clearFrame", () => {
+    const handlers: HandlerMap = {};
+    const input = new InputManager();
+    input.init(makeTarget(handlers));
+
+    emit(handlers, "wheel", { deltaY: 5 });
+    emit(handlers, "wheel", { deltaY: -2 });
+    expect(input.getWheelDeltaY()).toBe(3);
+
+    input.clearFrame();
+    expect(input.getWheelDeltaY()).toBe(0);
+  });
+
+  test("dragging starts only after movement while a button is down", () => {
+    const handlers: HandlerMap = {};
+    const input = new InputManager();
+    input.init(makeTarget(handlers));
+
+    emit(handlers, "mousemove", { clientX: 10, clientY: 20, buttons: 0 });
+    emit(handlers, "mousedown", { button: 0 });
+
+    expect(input.isDragging()).toBe(false);
+    expect(input.isDragging(0)).toBe(false);
+    expect(input.getDragStartPos(0)?.x).toBe(10);
+    expect(input.getDragStartPos(0)?.y).toBe(20);
+
+    emit(handlers, "mousemove", { clientX: 14, clientY: 26, buttons: 1 });
+    expect(input.isDragging()).toBe(true);
+    expect(input.isDragging(0)).toBe(true);
+    expect(input.getDragStartPos(0)?.x).toBe(10);
+    expect(input.getDragStartPos(0)?.y).toBe(20);
+
+    emit(handlers, "mouseup", { button: 0 });
+    expect(input.isDragging()).toBe(false);
+    expect(input.getDragStartPos(0)).toBeNull();
   });
 
   test("dispose removes listeners and clears state", () => {
@@ -59,14 +142,24 @@ describe("InputManager", () => {
     const input = new InputManager();
     input.init(makeTarget(handlers));
 
-    handlers.keydown?.forEach((fn) => fn({ key: "a" }));
+    emit(handlers, "keydown", { key: "a" });
+    emit(handlers, "mousedown", { button: 0 });
+    emit(handlers, "wheel", { deltaY: 10 });
     expect(input.isDown("a")).toBe(true);
+    expect(input.isMouseDown(0)).toBe(true);
+    expect(input.getWheelDeltaY()).toBe(10);
 
     input.dispose();
     expect(input.isDown("a")).toBe(false);
+    expect(input.isMouseDown(0)).toBe(false);
+    expect(input.getWheelDeltaY()).toBe(0);
 
     const keydownCount = handlers.keydown?.length ?? 0;
+    const mousedownCount = handlers.mousedown?.length ?? 0;
+    const wheelCount = handlers.wheel?.length ?? 0;
     expect(keydownCount).toBe(0);
+    expect(mousedownCount).toBe(0);
+    expect(wheelCount).toBe(0);
   });
 
   test("is runtime-scoped via EcsRuntime", () => {
@@ -81,8 +174,11 @@ describe("InputManager", () => {
     runtimeA.input.init(makeTarget(handlersA));
     runtimeB.input.init(makeTarget(handlersB));
 
-    handlersA.keydown?.forEach((fn) => fn({ key: "x" }));
+    emit(handlersA, "keydown", { key: "x" });
+    emit(handlersA, "mousedown", { button: 2 });
     expect(runtimeA.input.isDown("x")).toBe(true);
     expect(runtimeB.input.isDown("x")).toBe(false);
+    expect(runtimeA.input.isMouseDown(2)).toBe(true);
+    expect(runtimeB.input.isMouseDown(2)).toBe(false);
   });
 });
