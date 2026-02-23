@@ -1,15 +1,16 @@
 # @claudiu-ceia/tiny-tick
 
-Tiny runtime-scoped game toolkit playground.
+Tiny game toolkit playground.
 
-This came out of experiments around ideas from my game projects in `~/Dev/fade` and `~/Dev/spacetrader`.
+This came out of experiments around ideas from a couple of JS based game projects.
 
 ## Important
 
 This is **not** a serious production library right now.
 
 It is mostly a personal playground where I try ideas, break things, and learn.
-If it helps someone else, great, but I do not recommend depending on it yet.
+If it helps someone else, great, but I do not recommend depending on it yet. 
+This is only published so I can use it in my own projects rather than copy-pasting code around.
 
 ## Install
 
