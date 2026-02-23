@@ -1,4 +1,10 @@
-import { type Entity, HudRenderComponent, RenderLayer, type Vector2D, type ICamera } from "../lib.ts";
+import {
+  type Entity,
+  HudRenderComponent,
+  RenderLayer,
+  type Vector2D,
+  type ICamera,
+} from "../lib.ts";
 
 export type RunnerHudSnapshot = {
   score: number;

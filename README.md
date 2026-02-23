@@ -50,6 +50,7 @@ Scripts:
 - `bun run check`
 - `bun run example:bouncy-arena`
 - `bun run example:dino-runner`
+- `bun run example:collision-lab`
 
 ## License
 

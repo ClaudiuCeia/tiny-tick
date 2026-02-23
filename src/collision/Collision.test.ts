@@ -6,6 +6,7 @@ import { CollisionEntity } from "./CollisionEntity.ts";
 import { RectangleCollisionShape } from "./shapes/RectangleCollisionShape.ts";
 import { CircleCollisionShape } from "./shapes/CircleCollisionShape.ts";
 import { CurveCollisionShape } from "./shapes/CurveCollisionShape.ts";
+import { SpatialHashBroadphase } from "./SpatialHashBroadphase.ts";
 
 beforeEach(() => {
   EcsRuntime.reset();
@@ -62,13 +63,14 @@ describe("collision shapes", () => {
     expect(() => curve.resize(1)).toThrow("does not support resizing");
   });
 
-  test("CircleCollisionShape getCollisionNormal throws", () => {
+  test("CircleCollisionShape getCollisionNormal returns MTV for circle-circle", () => {
     const circle = new CircleCollisionShape(5);
     const other = new CircleCollisionShape(3);
 
-    expect(() => circle.getCollisionNormal(other, tx(0, 0), "center", tx(1, 1), "center")).toThrow(
-      "does not support getCollisionNormal",
-    );
+    const mtv = circle.getCollisionNormal(other, tx(0, 0), "center", tx(6, 0), "center");
+    expect(mtv).not.toBeNull();
+    expect(mtv?.x).toBeLessThan(0);
+    expect(mtv?.y).toBe(0);
   });
 
   test("CircleCollisionShape center-anchor contains its center point", () => {
@@ -83,6 +85,32 @@ describe("collision shapes", () => {
 
     const colliding = a.isCollidingWith(b, tx(0, 0, 0, 1), "center", tx(17, 0, 0, 3), "center");
     expect(colliding).toBe(true);
+  });
+
+  test("CircleCollisionShape and RectangleCollisionShape normals are available for both sides", () => {
+    const circle = new CircleCollisionShape(6);
+    const rect = new RectangleCollisionShape(12, 12);
+
+    const circleMtv = circle.getCollisionNormal(rect, tx(0, 0), "center", tx(8, 0), "center");
+    const rectMtv = rect.getCollisionNormal(circle, tx(8, 0), "center", tx(0, 0), "center");
+
+    expect(circleMtv).not.toBeNull();
+    expect(rectMtv).not.toBeNull();
+    expect(circleMtv?.x).toBeCloseTo(-(rectMtv?.x ?? 0), 5);
+    expect(circleMtv?.y).toBeCloseTo(-(rectMtv?.y ?? 0), 5);
+  });
+
+  test("CurveCollisionShape supports circle collision and normal", () => {
+    const curve = new CurveCollisionShape(() => 10);
+    const circle = new CircleCollisionShape(4);
+
+    const hit = curve.isCollidingWith(circle, tx(0, 0), "top-left", tx(2, 8), "center");
+    expect(hit).toBe(true);
+
+    const mtv = curve.getCollisionNormal(circle, tx(0, 0), "top-left", tx(2, 8), "center");
+    expect(mtv).not.toBeNull();
+    expect(mtv?.x).toBe(0);
+    expect(mtv?.y).toBeLessThan(0);
   });
 });
 
@@ -118,5 +146,40 @@ describe("CollisionEntity", () => {
 
     e.setAnchorPoint("top-left");
     expect(e.getAnchorPoint()).toBe("top-left");
+  });
+
+  test("layer/mask filtering blocks collisions when masks do not match", () => {
+    const a = new CollisionEntity(new RectangleCollisionShape(10, 10), "top-left", 0b0001, 0b0010);
+    const b = new CollisionEntity(new RectangleCollisionShape(10, 10), "top-left", 0b0100, 0b0001);
+
+    a.awake();
+    b.awake();
+    a.getComponent(TransformComponent).setPosition(0, 0);
+    b.getComponent(TransformComponent).setPosition(0, 0);
+
+    expect(a.canCollideWith(b)).toBe(false);
+    expect(a.isColliding(b)).toBe(false);
+    expect(a.getCollisionNormal(b)).toBeNull();
+  });
+
+  test("SpatialHashBroadphase returns unique overlapping pairs with mask filtering", () => {
+    const a = new CollisionEntity(new RectangleCollisionShape(10, 10), "top-left", 0b0001, 0b1111);
+    const b = new CollisionEntity(new RectangleCollisionShape(10, 10), "top-left", 0b0010, 0b1111);
+    const c = new CollisionEntity(new RectangleCollisionShape(10, 10), "top-left", 0b0100, 0b0000);
+
+    a.awake();
+    b.awake();
+    c.awake();
+
+    a.getComponent(TransformComponent).setPosition(0, 0);
+    b.getComponent(TransformComponent).setPosition(8, 0);
+    c.getComponent(TransformComponent).setPosition(8, 0);
+
+    const broadphase = new SpatialHashBroadphase(16);
+    const pairs = broadphase.queryPairs([a, b, c]);
+
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]?.includes(a)).toBe(true);
+    expect(pairs[0]?.includes(b)).toBe(true);
   });
 });

@@ -11,7 +11,8 @@ export class CollisionEntity extends Entity {
   constructor(
     public readonly shape: CollisionShape,
     private anchorPoint: CollisionAnchor = "center",
-    public layer?: number,
+    public layer: number = 1,
+    public collisionMask: number = 0xffffffff,
   ) {
     super();
   }
@@ -33,6 +34,8 @@ export class CollisionEntity extends Entity {
   }
 
   public isColliding(other: CollisionEntity): boolean {
+    if (!this.canCollideWith(other)) return false;
+
     const scA = this.getComponent(CollisionShapeComponent);
     const scB = other.getComponent(CollisionShapeComponent);
     const tA = this.getComponent(TransformComponent).globalTransform;
@@ -41,6 +44,8 @@ export class CollisionEntity extends Entity {
   }
 
   public getCollisionNormal(other: CollisionEntity): Vector2D | null {
+    if (!this.canCollideWith(other)) return null;
+
     const scA = this.getComponent(CollisionShapeComponent);
     const scB = other.getComponent(CollisionShapeComponent);
     const tA = this.getComponent(TransformComponent).globalTransform;
@@ -66,5 +71,19 @@ export class CollisionEntity extends Entity {
 
   public getAnchorPoint(): CollisionAnchor {
     return this.getComponent(CollisionShapeComponent).anchorPoint;
+  }
+
+  public setCollisionLayer(layer: number): this {
+    this.layer = layer;
+    return this;
+  }
+
+  public setCollisionMask(mask: number): this {
+    this.collisionMask = mask;
+    return this;
+  }
+
+  public canCollideWith(other: CollisionEntity): boolean {
+    return (this.collisionMask & other.layer) !== 0 && (other.collisionMask & this.layer) !== 0;
   }
 }

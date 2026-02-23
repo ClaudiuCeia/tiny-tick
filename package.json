@@ -41,6 +41,7 @@
     "test:coverage": "bun test --coverage",
     "example:bouncy-arena": "bun run examples/bouncy-arena/dev-server.ts",
     "example:dino-runner": "bun run examples/dino-runner/dev-server.ts",
+    "example:collision-lab": "bun run examples/collision-lab/dev-server.ts",
     "check": "bun run typecheck && bun run lint && bun run format:check && bun run test",
     "prepublishOnly": "bun run check"
   },

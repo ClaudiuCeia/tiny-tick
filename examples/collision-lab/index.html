@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tiny-tick - collision-lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 0%, #1a1d2a 0%, #0e1016 45%, #090a0f 100%);
+        color: #e8ecff;
+        font:
+          14px/1.45 "JetBrains Mono",
+          monospace;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        min-height: 100vh;
+      }
+      .panel {
+        border-right: 1px solid #2a3147;
+        background: linear-gradient(180deg, rgba(14, 17, 26, 0.98), rgba(10, 12, 19, 0.96));
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+        align-content: start;
+      }
+      .group {
+        border: 1px solid #313a53;
+        background: rgba(21, 24, 36, 0.8);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .group-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #9fb0dd;
+        margin-bottom: 8px;
+      }
+      .stat-grid {
+        display: grid;
+        gap: 6px;
+      }
+      .stat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .stat-row strong {
+        color: #d5def8;
+      }
+      .kbd {
+        display: inline-block;
+        min-width: 1.4em;
+        text-align: center;
+        border: 1px solid #455078;
+        background: #1a2135;
+        border-radius: 4px;
+        padding: 0 4px;
+        color: #d8e3ff;
+      }
+      .controls-grid {
+        display: grid;
+        gap: 6px;
+      }
+      .legend {
+        display: grid;
+        gap: 6px;
+      }
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #c6d1f3;
+      }
+      .swatch {
+        width: 16px;
+        height: 4px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+      .swatch-yellow {
+        background: rgba(255, 214, 102, 0.9);
+      }
+      .swatch-red {
+        background: rgba(255, 107, 107, 0.95);
+      }
+      .swatch-teal {
+        background: rgba(78, 205, 196, 0.95);
+      }
+      .check-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+      }
+      #canvas-host {
+        display: grid;
+        place-items: center;
+        padding: 16px;
+      }
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #d0daf6;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        letter-spacing: 0.02em;
+      }
+      .hint {
+        color: #aebce3;
+      }
+      code {
+        color: #bcd6ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="panel">
+        <h1>Collision Lab</h1>
+        <div class="hint">Click a body to select it, then drag with left mouse.</div>
+        <div class="controls-grid hint">
+          <div><span class="kbd">1</span> spawn circle at cursor</div>
+          <div><span class="kbd">2</span> spawn rectangle at cursor</div>
+        </div>
+        <div class="group">
+          <div class="group-title">Live Stats</div>
+          <div class="stat-grid">
+            <div class="stat-row">
+              <span>Selected</span><strong id="selected-label">none</strong>
+            </div>
+            <div class="stat-row"><span>Colliders</span><strong id="stat-colliders">0</strong></div>
+            <div class="stat-row">
+              <span>Broadphase Pairs</span><strong id="stat-broadphase">0</strong>
+            </div>
+            <div class="stat-row"><span>Narrow Hits</span><strong id="stat-hits">0</strong></div>
+          </div>
+        </div>
+        <div class="group">
+          <div class="group-title">Line Legend</div>
+          <div class="legend">
+            <div class="legend-row">
+              <span class="swatch swatch-yellow"></span>
+              Candidate pair from spatial hash
+            </div>
+            <div class="legend-row">
+              <span class="swatch swatch-red"></span> Confirmed collision
+            </div>
+            <div class="legend-row">
+              <span class="swatch swatch-teal"></span> MTV / normal vector
+            </div>
+          </div>
+        </div>
+        <div class="group">
+          <div class="group-title">Selected Layer Bits</div>
+          <div class="check-grid">
+            <label><input id="layer-1" type="checkbox" value="1" /> 1</label>
+            <label><input id="layer-2" type="checkbox" value="2" /> 2</label>
+            <label><input id="layer-4" type="checkbox" value="4" /> 4</label>
+            <label><input id="layer-8" type="checkbox" value="8" /> 8</label>
+          </div>
+        </div>
+        <div class="group">
+          <div class="group-title">Selected Mask Bits</div>
+          <div class="check-grid">
+            <label><input id="mask-1" type="checkbox" value="1" /> 1</label>
+            <label><input id="mask-2" type="checkbox" value="2" /> 2</label>
+            <label><input id="mask-4" type="checkbox" value="4" /> 4</label>
+            <label><input id="mask-8" type="checkbox" value="8" /> 8</label>
+          </div>
+        </div>
+      </aside>
+      <main id="canvas-host"></main>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

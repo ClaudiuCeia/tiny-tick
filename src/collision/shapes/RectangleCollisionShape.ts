@@ -1,6 +1,7 @@
 import type { CollisionAnchor, CollisionShape } from "../CollisionShape.ts";
 import type { Transform } from "../../transform/TransformComponent.ts";
 import { Vector2D } from "../../math/Vector2D.ts";
+import { CircleCollisionShape } from "./CircleCollisionShape.ts";
 
 export class RectangleCollisionShape implements CollisionShape {
   constructor(
@@ -88,6 +89,11 @@ export class RectangleCollisionShape implements CollisionShape {
     transformB: Transform,
     anchorB: CollisionAnchor,
   ): Vector2D | null {
+    if (other instanceof CircleCollisionShape) {
+      const mtvCircle = other.getCollisionNormal(this, transformB, anchorB, transformA, anchorA);
+      return mtvCircle ? mtvCircle.negate() : null;
+    }
+
     if (!(other instanceof RectangleCollisionShape)) return null;
 
     const aabbA = this.getAABB(transformA, anchorA);
