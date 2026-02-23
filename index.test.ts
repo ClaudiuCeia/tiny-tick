@@ -14,6 +14,7 @@ describe("public exports", () => {
     expect(rootApi.RenderSystem).toBe(srcApi.RenderSystem);
     expect(rootApi.SceneManager).toBe(srcApi.SceneManager);
     expect(rootApi.InputManager).toBe(srcApi.InputManager);
+    expect(rootApi.World).toBe(srcApi.World);
     expect(rootApi.ObjectPool).toBe(srcApi.ObjectPool);
     expect(rootApi.EntityProfiler).toBe(srcApi.EntityProfiler);
   });
@@ -24,5 +25,6 @@ describe("public exports", () => {
     expect(typeof rootApi.GameEvent).toBe("function");
     expect(typeof rootApi.Vector2D).toBe("function");
     expect(typeof rootApi.noise1D).toBe("function");
+    expect(typeof rootApi.World).toBe("function");
   });
 });

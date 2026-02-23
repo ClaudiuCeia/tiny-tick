@@ -1,4 +1,12 @@
-import { EcsRuntime, SceneManager, Vector2D, type ICanvas } from "./lib.ts";
+import {
+  EcsRuntime,
+  SceneManager,
+  SystemPhase,
+  SystemTickMode,
+  Vector2D,
+  World,
+  type ICanvas,
+} from "./lib.ts";
 import { RunnerScene } from "./scenes/RunnerScene.ts";
 
 const createCanvas = (): HTMLCanvasElement => {
@@ -32,6 +40,33 @@ export const bootstrapDinoRunner = (mount: HTMLElement = document.body): void =>
 
   const scene = new RunnerScene(runtime, canvasView);
   sceneManager.changeScene(scene);
+  const world = new World({ runtime, fixedDeltaTime: 1 / 120, maxSubSteps: 8 });
+
+  world.addSystem({
+    phase: SystemPhase.Input,
+    tickMode: SystemTickMode.Frame,
+    update() {
+      // Input listeners feed the runtime state. This phase makes ordering explicit.
+    },
+  });
+
+  world.addSystem({
+    phase: SystemPhase.Simulation,
+    tickMode: SystemTickMode.Fixed,
+    update(dt) {
+      sceneManager.update(dt);
+    },
+  });
+
+  world.addSystem({
+    phase: SystemPhase.Render,
+    tickMode: SystemTickMode.Frame,
+    update() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      sceneManager.render(ctx);
+      runtime.input.clearFrame();
+    },
+  });
 
   let lastTs = performance.now();
 
@@ -39,10 +74,7 @@ export const bootstrapDinoRunner = (mount: HTMLElement = document.body): void =>
     const dt = Math.min(0.05, (now - lastTs) / 1000);
     lastTs = now;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    sceneManager.update(dt);
-    sceneManager.render(ctx);
-    runtime.input.clearFrame();
+    world.step(dt);
 
     requestAnimationFrame(frame);
   };

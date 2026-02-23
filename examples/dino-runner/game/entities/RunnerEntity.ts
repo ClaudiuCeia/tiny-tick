@@ -3,7 +3,7 @@ import {
   Entity,
   RectangleCollisionShape,
   TransformComponent,
-  Vector2D,
+  type Vector2D,
 } from "../lib.ts";
 import { RectRenderComponent } from "../components/RectRenderComponent.ts";
 import { RunnerJumpComponent } from "../components/RunnerJumpComponent.ts";

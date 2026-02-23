@@ -11,8 +11,11 @@ export {
   RenderSystem,
   Scene,
   SceneManager,
+  SystemPhase,
+  SystemTickMode,
   TransformComponent,
   Vector2D,
+  World,
   type ICamera,
   type ICanvas,
 } from "../../../index.ts";
