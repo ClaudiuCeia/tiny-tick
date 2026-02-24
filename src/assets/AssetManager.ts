@@ -56,6 +56,78 @@ export type SpriteSheetAsset = {
   tags: Record<string, SpriteSheetTag>;
 };
 
+export type FontManifestEntry = {
+  family: string;
+  source: string;
+  descriptors?: FontFaceDescriptors;
+};
+
+export type SpriteSheetManifestEntry<TImageKey extends string> = {
+  image: TImageKey;
+  options: SpriteSheetGridOptions;
+};
+
+export type AssetManifest<
+  TImages extends Record<string, string> = Record<string, string>,
+  TAudio extends Record<string, string> = Record<string, string>,
+  TFonts extends Record<string, FontManifestEntry> = Record<string, FontManifestEntry>,
+  TSpritesheets extends Record<string, SpriteSheetManifestEntry<keyof TImages & string>> = Record<
+    string,
+    SpriteSheetManifestEntry<keyof TImages & string>
+  >,
+> = {
+  images?: TImages;
+  audio?: TAudio;
+  fonts?: TFonts;
+  spritesheets?: TSpritesheets;
+};
+
+type ManifestImages<TManifest extends AssetManifest> =
+  TManifest extends AssetManifest<infer TImages>
+    ? { [K in keyof TImages]: HTMLImageElement }
+    : Record<string, HTMLImageElement>;
+
+type ManifestAudio<TManifest extends AssetManifest> =
+  TManifest extends AssetManifest<Record<string, string>, infer TAudio>
+    ? { [K in keyof TAudio]: HTMLAudioElement }
+    : Record<string, HTMLAudioElement>;
+
+type ManifestFonts<TManifest extends AssetManifest> =
+  TManifest extends AssetManifest<Record<string, string>, Record<string, string>, infer TFonts>
+    ? { [K in keyof TFonts]: FontFace }
+    : Record<string, FontFace>;
+
+type ManifestSpritesheets<TManifest extends AssetManifest> =
+  TManifest extends AssetManifest<
+    Record<string, string>,
+    Record<string, string>,
+    Record<string, FontManifestEntry>,
+    infer TSpritesheets
+  >
+    ? { [K in keyof TSpritesheets]: SpriteSheetAsset }
+    : Record<string, SpriteSheetAsset>;
+
+export type LoadedAssetManifest<TManifest extends AssetManifest> = {
+  scope: AssetScope;
+  release: () => void;
+  images: ManifestImages<TManifest>;
+  audio: ManifestAudio<TManifest>;
+  fonts: ManifestFonts<TManifest>;
+  spritesheets: ManifestSpritesheets<TManifest>;
+};
+
+export const defineAssetManifest = <
+  const TImages extends Record<string, string>,
+  const TAudio extends Record<string, string> = Record<string, never>,
+  const TFonts extends Record<string, FontManifestEntry> = Record<string, never>,
+  const TSpritesheets extends Record<
+    string,
+    SpriteSheetManifestEntry<Extract<keyof TImages, string>>
+  > = Record<string, never>,
+>(
+  manifest: AssetManifest<TImages, TAudio, TFonts, TSpritesheets>,
+): AssetManifest<TImages, TAudio, TFonts, TSpritesheets> => manifest;
+
 type AssetLoaders = {
   image: (url: string) => Promise<LoaderResult<HTMLImageElement>>;
   audio: (url: string) => Promise<LoaderResult<HTMLAudioElement>>;
@@ -87,6 +159,42 @@ const stableStringify = (value: unknown): string => {
   const keys = Object.keys(obj).sort();
   const parts = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
   return `{${parts.join(",")}}`;
+};
+
+const ASSET_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+
+const assertManifestKey = (section: string, key: string): void => {
+  if (!ASSET_KEY_PATTERN.test(key)) {
+    throw new Error(
+      `Invalid asset key '${key}' in ${section}. Use letters, digits, '_' or '-', and start with a letter/digit.`,
+    );
+  }
+};
+
+const hasKnownExt = (url: string, exts: readonly string[]): boolean => {
+  const normalized = url.split(/[?#]/, 1)[0]!.toLowerCase();
+  return exts.some((ext) => normalized.endsWith(ext));
+};
+
+const assertUrlPath = (
+  section: string,
+  key: string,
+  url: string,
+  allowedExts: readonly string[],
+): void => {
+  if (url.trim().length === 0) {
+    throw new Error(`Asset '${section}.${key}' has an empty path`);
+  }
+  if (!hasKnownExt(url, allowedExts)) {
+    throw new Error(
+      `Asset '${section}.${key}' has unsupported file extension. Expected one of: ${allowedExts.join(", ")}`,
+    );
+  }
+};
+
+const extractFirstFontSourceUrl = (source: string): string | null => {
+  const match = source.match(/url\((["']?)([^"')]+)\1\)/i);
+  return match?.[2] ?? null;
 };
 
 const defaultImageLoader: AssetLoaders["image"] = async (url) => {
@@ -321,6 +429,99 @@ export class AssetManager {
     const id = `${label}:${++this.scopeCounter}`;
     this.scopeAliases.set(id, new Map());
     return new AssetScope(this, id, label);
+  }
+
+  public async load<
+    const TImages extends Record<string, string>,
+    const TAudio extends Record<string, string>,
+    const TFonts extends Record<string, FontManifestEntry>,
+    const TSpritesheets extends Record<
+      string,
+      SpriteSheetManifestEntry<Extract<keyof TImages, string>>
+    >,
+  >(
+    manifest: AssetManifest<TImages, TAudio, TFonts, TSpritesheets>,
+    options: { scopeLabel?: string } = {},
+  ): Promise<LoadedAssetManifest<AssetManifest<TImages, TAudio, TFonts, TSpritesheets>>> {
+    const scope = this.createScope(options.scopeLabel ?? "manifest");
+    const loaded = {
+      scope,
+      release: () => scope.release(),
+      images: {},
+      audio: {},
+      fonts: {},
+      spritesheets: {},
+    } as LoadedAssetManifest<AssetManifest<TImages, TAudio, TFonts, TSpritesheets>>;
+
+    const aliasFor = (section: string, key: string): string => `${section}:${key}`;
+
+    try {
+      const images = manifest.images ?? ({} as TImages);
+      for (const [key, url] of Object.entries(images)) {
+        assertManifestKey("images", key);
+        assertUrlPath("images", key, url, [
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".webp",
+          ".gif",
+          ".svg",
+          ".avif",
+        ]);
+        const image = await scope.loadImage(aliasFor("images", key), url);
+        (loaded.images as Record<string, HTMLImageElement>)[key] = image;
+      }
+
+      const audio = manifest.audio ?? ({} as TAudio);
+      for (const [key, url] of Object.entries(audio)) {
+        assertManifestKey("audio", key);
+        assertUrlPath("audio", key, url, [".ogg", ".mp3", ".wav", ".m4a", ".aac"]);
+        const clip = await scope.loadAudio(aliasFor("audio", key), url);
+        (loaded.audio as Record<string, HTMLAudioElement>)[key] = clip;
+      }
+
+      const fonts = manifest.fonts ?? ({} as TFonts);
+      for (const [key, entry] of Object.entries(fonts)) {
+        assertManifestKey("fonts", key);
+        if (!entry.family.trim()) {
+          throw new Error(`Asset 'fonts.${key}' has empty family`);
+        }
+        const fontUrl = extractFirstFontSourceUrl(entry.source);
+        if (!fontUrl) {
+          throw new Error(`Asset 'fonts.${key}' must include a url(...) source`);
+        }
+        assertUrlPath("fonts", key, fontUrl, [".ttf", ".otf", ".woff", ".woff2"]);
+        const face = await scope.loadFont(
+          aliasFor("fonts", key),
+          entry.family,
+          entry.source,
+          entry.descriptors,
+        );
+        (loaded.fonts as Record<string, FontFace>)[key] = face;
+      }
+
+      const spritesheets = manifest.spritesheets ?? ({} as TSpritesheets);
+      for (const [key, entry] of Object.entries(spritesheets)) {
+        assertManifestKey("spritesheets", key);
+        const imageAlias = aliasFor("images", entry.image);
+        if (!scope.has(imageAlias)) {
+          throw new Error(
+            `Asset 'spritesheets.${key}' references missing image key '${entry.image}'`,
+          );
+        }
+        const sheet = await scope.loadSpriteSheetGrid(
+          aliasFor("spritesheets", key),
+          imageAlias,
+          entry.options,
+        );
+        (loaded.spritesheets as Record<string, SpriteSheetAsset>)[key] = sheet;
+      }
+
+      return loaded;
+    } catch (error) {
+      scope.release();
+      throw error;
+    }
   }
 
   public releaseScope(scopeId: string): void {

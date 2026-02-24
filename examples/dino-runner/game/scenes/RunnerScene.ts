@@ -6,9 +6,9 @@ import {
   Scene,
   TransformComponent,
   Vector2D,
-  type AssetScope,
   type ICanvas,
 } from "../lib.ts";
+import type { RunnerAssetBundle } from "../assets.ts";
 import { RunnerHudComponent } from "../components/RunnerHudComponent.ts";
 import { createRunnerEventBus } from "../events.ts";
 import { ObstacleEntity } from "../entities/ObstacleEntity.ts";
@@ -26,34 +26,6 @@ class HudEntity extends Entity {
     super.update(dt);
   }
 }
-
-type RunnerVisualAssets = {
-  scope: AssetScope;
-  fontFamily: string;
-  backgrounds: {
-    color: HTMLImageElement;
-    clouds: HTMLImageElement;
-  };
-  sprites: {
-    idle: HTMLImageElement;
-    jump: HTMLImageElement;
-    walkA: HTMLImageElement;
-    walkB: HTMLImageElement;
-    hit: HTMLImageElement;
-  };
-  obstacleBlocks: [HTMLImageElement, HTMLImageElement, HTMLImageElement];
-  terrainTiles: {
-    top: HTMLImageElement;
-    middle: HTMLImageElement;
-    bottom: HTMLImageElement;
-  };
-  sounds: {
-    jump: HTMLAudioElement;
-    land: HTMLAudioElement;
-    score: HTMLAudioElement;
-    hurt: HTMLAudioElement;
-  };
-};
 
 export class RunnerScene extends Scene {
   private readonly eventBus = createRunnerEventBus();
@@ -82,7 +54,7 @@ export class RunnerScene extends Scene {
   constructor(
     private readonly runtime: EcsRuntime,
     private readonly canvas: ICanvas,
-    private readonly visuals?: RunnerVisualAssets,
+    private readonly assets?: RunnerAssetBundle,
   ) {
     super();
     this.groundY = this.canvas.size.y - 50;
@@ -105,7 +77,7 @@ export class RunnerScene extends Scene {
         new RunnerHudComponent(() => ({
           score: this.score,
           gameOver: this.gameOver,
-          fontFamily: this.visuals?.fontFamily,
+          fontFamily: this.assets?.fonts.ui.family,
         })),
       );
 
@@ -168,15 +140,16 @@ export class RunnerScene extends Scene {
       this.runner = null;
       this.obstacles = [];
 
-      this.visuals?.scope.release();
+      this.assets?.release();
       this.runtime.registry.clear();
     });
   }
 
   private renderBackground(ctx: CanvasRenderingContext2D): void {
-    if (!this.visuals) return;
+    if (!this.assets) return;
 
-    const { color, clouds } = this.visuals.backgrounds;
+    const color = this.assets.images.backgroundColor;
+    const clouds = this.assets.images.backgroundClouds;
     const tileWidth = color.naturalWidth || color.width || 256;
     const tileHeight = color.naturalHeight || color.height || 256;
     const cloudWidth = clouds.naturalWidth || clouds.width || 256;
@@ -208,9 +181,13 @@ export class RunnerScene extends Scene {
   }
 
   private renderTerrain(ctx: CanvasRenderingContext2D): void {
-    if (!this.visuals) return;
+    if (!this.assets) return;
 
-    const tiles = this.visuals.terrainTiles;
+    const tiles = {
+      top: this.assets.images.terrainTop,
+      middle: this.assets.images.terrainMiddle,
+      bottom: this.assets.images.terrainBottom,
+    };
     const tileSize = 32;
     const yStart = Math.floor(this.groundY);
     const rows = Math.ceil((this.canvas.size.y - yStart) / tileSize);
@@ -232,13 +209,23 @@ export class RunnerScene extends Scene {
     this.subscriptions.push(
       this.eventBus.subscribe("score_changed", (e) => {
         this.score = e.payload.score;
-        this.playSfx(this.visuals?.sounds.score);
+        this.playSfx(this.assets?.audio.score);
+      }),
+    );
+    this.subscriptions.push(
+      this.eventBus.subscribe("runner_jumped", () => {
+        this.playSfx(this.assets?.audio.jump);
+      }),
+    );
+    this.subscriptions.push(
+      this.eventBus.subscribe("runner_landed", () => {
+        this.playSfx(this.assets?.audio.land);
       }),
     );
     this.subscriptions.push(
       this.eventBus.subscribe("game_over", () => {
         this.gameOver = true;
-        this.playSfx(this.visuals?.sounds.hurt);
+        this.playSfx(this.assets?.audio.hurt);
         if (this.runner) {
           this.runner.setDead(true);
           const body = this.runner.getBody();
@@ -262,11 +249,24 @@ export class RunnerScene extends Scene {
   }
 
   private spawnRunner(): void {
-    this.runner = new RunnerEntity(new Vector2D(this.runnerX, this.groundY - 32), this.groundY, {
-      sprites: this.visuals?.sprites,
-      onJump: () => this.playSfx(this.visuals?.sounds.jump),
-      onLand: () => this.playSfx(this.visuals?.sounds.land),
-    });
+    const sprites = this.assets
+      ? {
+          idle: this.assets.images.runnerIdle,
+          jump: this.assets.images.runnerJump,
+          walkA: this.assets.images.runnerWalkA,
+          walkB: this.assets.images.runnerWalkB,
+          hit: this.assets.images.runnerHit,
+        }
+      : undefined;
+
+    this.runner = new RunnerEntity(
+      new Vector2D(this.runnerX, this.groundY - 32),
+      this.groundY,
+      this.eventBus,
+      {
+        sprites,
+      },
+    );
     this.root?.addChild(this.runner);
   }
 
@@ -287,7 +287,13 @@ export class RunnerScene extends Scene {
     const spawnPos = options?.position ?? new Vector2D(x, y);
     const speed = options?.speed ?? this.worldScrollSpeed;
 
-    const blockSprite = this.visuals?.obstacleBlocks[Math.max(0, stackCount - 1)] ?? undefined;
+    const blockSprite = this.assets
+      ? [
+          this.assets.images.blockGreen,
+          this.assets.images.blockYellow,
+          this.assets.images.blockRed,
+        ][Math.max(0, stackCount - 1)]
+      : undefined;
     const obstacle = new ObstacleEntity(spawnPos, width, height, speed, {
       blockSprite,
       stackCount,

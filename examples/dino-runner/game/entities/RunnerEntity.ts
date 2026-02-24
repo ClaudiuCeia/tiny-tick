@@ -6,6 +6,8 @@ import {
   TransformComponent,
   type Vector2D,
 } from "../lib.ts";
+import type { BroadcastEventBus } from "../lib.ts";
+import type { RunnerEventPayload } from "../events.ts";
 import { RectRenderComponent } from "../components/RectRenderComponent.ts";
 import { RunnerJumpComponent } from "../components/RunnerJumpComponent.ts";
 import { RunnerSpriteRenderComponent } from "../components/RunnerSpriteRenderComponent.ts";
@@ -27,10 +29,9 @@ export class RunnerEntity extends Entity {
   constructor(
     start: Vector2D,
     public readonly groundY: number,
+    eventBus: BroadcastEventBus<RunnerEventPayload>,
     options: {
       sprites?: RunnerSpriteSet;
-      onJump?: () => void;
-      onLand?: () => void;
     } = {},
   ) {
     super();
@@ -43,7 +44,7 @@ export class RunnerEntity extends Entity {
         linearDamping: 0,
       }),
     );
-    this.addComponent(new RunnerJumpComponent(groundY, -640, options.onJump, options.onLand));
+    this.addComponent(new RunnerJumpComponent(groundY, -640, eventBus));
 
     if (options.sprites) {
       this.addComponent(new RunnerSpriteRenderComponent(options.sprites));

@@ -1,6 +1,7 @@
 export {
   BroadcastEventBus,
   AssetScope,
+  defineAssetManifest,
   fitRectContain,
   CollisionEntity,
   Component,
@@ -25,4 +26,5 @@ export {
   World,
   type ICamera,
   type ICanvas,
+  type LoadedAssetManifest,
 } from "../../../index.ts";

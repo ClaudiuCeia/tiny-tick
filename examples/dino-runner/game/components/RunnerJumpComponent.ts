@@ -1,5 +1,7 @@
 import { Component, PhysicsBodyComponent, TransformComponent, Vector2D } from "../lib.ts";
 import type { RunnerEntity } from "../entities/RunnerEntity.ts";
+import type { BroadcastEventBus } from "../lib.ts";
+import type { RunnerEventPayload } from "../events.ts";
 
 export class RunnerJumpComponent extends Component<RunnerEntity> {
   private wasGrounded = true;
@@ -7,8 +9,7 @@ export class RunnerJumpComponent extends Component<RunnerEntity> {
   constructor(
     private readonly groundY: number,
     private readonly jumpVelocity: number,
-    private readonly onJump?: () => void,
-    private readonly onLand?: () => void,
+    private readonly eventBus: BroadcastEventBus<RunnerEventPayload>,
   ) {
     super();
   }
@@ -28,7 +29,7 @@ export class RunnerJumpComponent extends Component<RunnerEntity> {
       body.setGravityScale(1);
       const velocity = body.getVelocity();
       body.setVelocity(new Vector2D(velocity.x, this.jumpVelocity));
-      this.onJump?.();
+      this.eventBus.publish("runner_jumped", {});
     }
 
     const transform = this.ent.getComponent(TransformComponent);
@@ -43,7 +44,7 @@ export class RunnerJumpComponent extends Component<RunnerEntity> {
     }
 
     if (!this.wasGrounded && groundedNow) {
-      this.onLand?.();
+      this.eventBus.publish("runner_landed", {});
     }
     this.wasGrounded = groundedNow;
   }

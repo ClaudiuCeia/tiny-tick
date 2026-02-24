@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   AssetManager,
+  defineAssetManifest,
   type SpriteSheetAsset,
   type SpriteSheetGridOptions,
 } from "./AssetManager.ts";
@@ -149,5 +150,86 @@ describe("AssetManager", () => {
 
     expect(loads).toBe(2);
     expect(runtimeA.assets).not.toBe(runtimeB.assets);
+  });
+
+  test("load(manifest) returns typed asset groups and can release scope", async () => {
+    const manager = new AssetManager({
+      loaders: {
+        image: async (url) => ({ asset: mockImage(32, 32, url) }),
+        audio: async (url) => ({ asset: { src: url } as HTMLAudioElement }),
+        font: async (family) => ({ asset: { family } as FontFace }),
+      },
+    });
+
+    const manifest = defineAssetManifest({
+      images: {
+        runner: "/runner.svg",
+      },
+      audio: {
+        jump: "/jump.ogg",
+      },
+      fonts: {
+        ui: {
+          family: "Kenney Pixel",
+          source: "url('/kenney.ttf')",
+        },
+      },
+    });
+
+    const loaded = await manager.load(manifest, { scopeLabel: "scene" });
+    expect(loaded.images.runner.src).toBe("/runner.svg");
+    expect(loaded.audio.jump.src).toBe("/jump.ogg");
+    expect(loaded.fonts.ui.family).toBe("Kenney Pixel");
+    expect(manager.getStats().refs).toBe(3);
+
+    loaded.release();
+    expect(manager.getStats()).toEqual({ scopes: 0, cachedAssets: 0, refs: 0 });
+  });
+
+  test("load(manifest) validates key and path formats", async () => {
+    const manager = new AssetManager({
+      loaders: {
+        image: async (url) => ({ asset: mockImage(16, 16, url) }),
+      },
+    });
+
+    await expect(
+      manager.load({
+        images: {
+          "bad key": "/ok.svg",
+        },
+      }),
+    ).rejects.toThrow("Invalid asset key");
+
+    await expect(
+      manager.load({
+        images: {
+          good: "/not-image.txt",
+        },
+      }),
+    ).rejects.toThrow("unsupported file extension");
+  });
+
+  test("load(manifest) validates spritesheet image references", async () => {
+    const manager = new AssetManager({
+      loaders: {
+        image: async (url) => ({ asset: mockImage(64, 64, url) }),
+      },
+    });
+
+    await expect(
+      manager.load({
+        spritesheets: {
+          hero: {
+            image: "missing",
+            options: {
+              frameWidth: 16,
+              frameHeight: 16,
+              count: 4,
+            },
+          },
+        },
+      }),
+    ).rejects.toThrow("references missing image key");
   });
 });

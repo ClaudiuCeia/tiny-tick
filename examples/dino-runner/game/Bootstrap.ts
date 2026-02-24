@@ -6,9 +6,9 @@ import {
   SystemTickMode,
   Vector2D,
   World,
-  type AssetScope,
   type ICanvas,
 } from "./lib.ts";
+import { loadRunnerAssets } from "./assets.ts";
 import { RunnerScene } from "./scenes/RunnerScene.ts";
 
 const DISPLAY_WIDTH = 1024;
@@ -30,120 +30,6 @@ const createCanvas = (pixelScale: number): HTMLCanvasElement => {
 
 type DinoBootstrapOptions = {
   pixelScale?: number;
-};
-
-type RunnerVisualAssets = {
-  scope: AssetScope;
-  fontFamily: string;
-  backgrounds: {
-    color: HTMLImageElement;
-    clouds: HTMLImageElement;
-  };
-  sprites: {
-    idle: HTMLImageElement;
-    jump: HTMLImageElement;
-    walkA: HTMLImageElement;
-    walkB: HTMLImageElement;
-    hit: HTMLImageElement;
-  };
-  obstacleBlocks: [HTMLImageElement, HTMLImageElement, HTMLImageElement];
-  terrainTiles: {
-    top: HTMLImageElement;
-    middle: HTMLImageElement;
-    bottom: HTMLImageElement;
-  };
-  sounds: {
-    jump: HTMLAudioElement;
-    land: HTMLAudioElement;
-    score: HTMLAudioElement;
-    hurt: HTMLAudioElement;
-  };
-};
-
-const loadRunnerAssets = async (runtime: EcsRuntime): Promise<RunnerVisualAssets> => {
-  const scope = runtime.assets.createScope("dino-runner-scene");
-  const base = "/examples/dino-runner/assets/kenney_new-platformer-pack-1.1";
-  const chars = `${base}/Vector/Characters`;
-  const tiles = `${base}/Vector/Tiles`;
-  const bg = `${base}/Vector/Backgrounds`;
-  const sounds = `${base}/Sounds`;
-
-  let fontFamily = "monospace";
-  try {
-    await scope.loadFont(
-      "ui-font",
-      "Kenney Pixel",
-      "url('/examples/dino-runner/assets/kenney_kenney-fonts/Fonts/Kenney%20Pixel.ttf')",
-    );
-    fontFamily = "Kenney Pixel";
-  } catch {
-    fontFamily = "monospace";
-  }
-
-  const [
-    idle,
-    jump,
-    walkA,
-    walkB,
-    hit,
-    block1,
-    block2,
-    block3,
-    terrainTop,
-    terrainMiddle,
-    terrainBottom,
-    bgColor,
-    bgClouds,
-  ] = await Promise.all([
-    scope.loadImage("runner-idle", `${chars}/character_purple_idle.svg`),
-    scope.loadImage("runner-jump", `${chars}/character_purple_jump.svg`),
-    scope.loadImage("runner-walk-a", `${chars}/character_purple_walk_a.svg`),
-    scope.loadImage("runner-walk-b", `${chars}/character_purple_walk_b.svg`),
-    scope.loadImage("runner-hit", `${chars}/character_purple_hit.svg`),
-    scope.loadImage("obstacle-block-1", `${tiles}/block_green.svg`),
-    scope.loadImage("obstacle-block-2", `${tiles}/block_yellow.svg`),
-    scope.loadImage("obstacle-block-3", `${tiles}/block_red.svg`),
-    scope.loadImage("terrain-top", `${tiles}/terrain_grass_block_top.svg`),
-    scope.loadImage("terrain-middle", `${tiles}/terrain_dirt_block_center.svg`),
-    scope.loadImage("terrain-bottom", `${tiles}/terrain_dirt_block_bottom.svg`),
-    scope.loadImage("bg-color", `${bg}/background_color_desert.svg`),
-    scope.loadImage("bg-clouds", `${bg}/background_clouds.svg`),
-  ]);
-
-  const [jumpSfx, landSfx, scoreSfx, hurtSfx] = await Promise.all([
-    scope.loadAudio("sfx-jump", `${sounds}/sfx_jump.ogg`),
-    scope.loadAudio("sfx-land", `${sounds}/sfx_bump.ogg`),
-    scope.loadAudio("sfx-score", `${sounds}/sfx_coin.ogg`),
-    scope.loadAudio("sfx-hurt", `${sounds}/sfx_hurt.ogg`),
-  ]);
-
-  return {
-    scope,
-    fontFamily,
-    backgrounds: {
-      color: bgColor,
-      clouds: bgClouds,
-    },
-    sprites: {
-      idle,
-      jump,
-      walkA,
-      walkB,
-      hit,
-    },
-    obstacleBlocks: [block1, block2, block3],
-    terrainTiles: {
-      top: terrainTop,
-      middle: terrainMiddle,
-      bottom: terrainBottom,
-    },
-    sounds: {
-      jump: jumpSfx,
-      land: landSfx,
-      score: scoreSfx,
-      hurt: hurtSfx,
-    },
-  };
 };
 
 export const bootstrapDinoRunner = async (
