@@ -22,6 +22,20 @@ type CacheEntry<T = unknown> = {
   dependencies: string[];
 };
 
+type AudioPlayRequest = {
+  audio: HTMLAudioElement;
+  volume: number;
+};
+
+const isAudioLike = (value: unknown): value is HTMLAudioElement => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as {
+    cloneNode?: unknown;
+    play?: unknown;
+  };
+  return typeof candidate.cloneNode === "function" && typeof candidate.play === "function";
+};
+
 export type SpriteSheetTag = {
   from: number;
   to: number;
@@ -415,6 +429,10 @@ export class AssetManager {
   private readonly entries = new Map<string, CacheEntry>();
   private readonly scopeAliases = new Map<string, Map<string, AssetHandle>>();
   private scopeCounter = 0;
+  private audioUnlocked = false;
+  private audioUnlockTarget: EventTarget | null = null;
+  private audioUnlockCleanup: (() => void) | null = null;
+  private readonly pendingAudioPlays: AudioPlayRequest[] = [];
 
   constructor(options: AssetManagerOptions = {}) {
     this.loaders = {
@@ -540,6 +558,32 @@ export class AssetManager {
       this.releaseScope(scopeId);
     }
     this.entries.clear();
+    this.resetAudioUnlock();
+  }
+
+  public playAudio(
+    audio: HTMLAudioElement | undefined,
+    options: { volume?: number; unlockTarget?: EventTarget | null } = {},
+  ): void {
+    if (!audio) return;
+    const volume = options.volume ?? 1;
+
+    if (this.audioUnlocked) {
+      this.playAudioNow(audio, volume);
+      return;
+    }
+
+    const unlockTarget =
+      options.unlockTarget === undefined ? this.getDefaultUnlockTarget() : options.unlockTarget;
+    if (!unlockTarget) {
+      // Non-browser environment or unavailable unlock target: best-effort immediate play.
+      this.audioUnlocked = true;
+      this.playAudioNow(audio, volume);
+      return;
+    }
+
+    this.pendingAudioPlays.push({ audio, volume });
+    this.installAudioUnlock(unlockTarget);
   }
 
   public getStats(): {
@@ -739,6 +783,86 @@ export class AssetManager {
     this.entries.delete(cacheKey);
     for (const dependencyKey of entry.dependencies) {
       this.decrementRef(dependencyKey);
+    }
+  }
+
+  private installAudioUnlock(target: EventTarget): void {
+    if (this.audioUnlocked) return;
+    if (this.audioUnlockTarget === target && this.audioUnlockCleanup) return;
+
+    this.clearAudioUnlockListeners();
+    this.audioUnlockTarget = target;
+
+    const unlock = () => {
+      if (this.audioUnlocked) return;
+      this.audioUnlocked = true;
+      this.primeLoadedAudio();
+      const queue = this.pendingAudioPlays.splice(0);
+      for (const request of queue) {
+        this.playAudioNow(request.audio, request.volume);
+      }
+      cleanup();
+    };
+
+    const cleanup = () => {
+      if (!this.audioUnlockTarget) return;
+      this.audioUnlockTarget.removeEventListener("pointerdown", unlock as EventListener);
+      this.audioUnlockTarget.removeEventListener("keydown", unlock as EventListener);
+      this.audioUnlockTarget.removeEventListener("touchstart", unlock as EventListener);
+      if (this.audioUnlockCleanup === cleanup) {
+        this.audioUnlockCleanup = null;
+      }
+      this.audioUnlockTarget = null;
+    };
+
+    target.addEventListener("pointerdown", unlock as EventListener, { once: true });
+    target.addEventListener("keydown", unlock as EventListener, { once: true });
+    target.addEventListener("touchstart", unlock as EventListener, { once: true });
+    this.audioUnlockCleanup = cleanup;
+  }
+
+  private resetAudioUnlock(): void {
+    this.clearAudioUnlockListeners();
+    this.audioUnlocked = false;
+    this.pendingAudioPlays.length = 0;
+  }
+
+  private clearAudioUnlockListeners(): void {
+    this.audioUnlockCleanup?.();
+    this.audioUnlockCleanup = null;
+    this.audioUnlockTarget = null;
+  }
+
+  private getDefaultUnlockTarget(): EventTarget | null {
+    if (typeof window !== "undefined") return window;
+    return null;
+  }
+
+  private playAudioNow(audio: HTMLAudioElement, volume: number): void {
+    const instance = audio.cloneNode(true) as HTMLAudioElement;
+    instance.volume = volume;
+    instance.currentTime = 0;
+    void instance.play().catch(() => {
+      // Ignore browser autoplay rejections: unlock flow retries on next gesture.
+    });
+  }
+
+  private primeLoadedAudio(): void {
+    for (const entry of this.entries.values()) {
+      if (entry.kind !== "audio" || !isAudioLike(entry.value)) continue;
+      const probe = entry.value.cloneNode(true) as HTMLAudioElement;
+      probe.muted = true;
+      probe.volume = 0;
+      probe.currentTime = 0;
+      void probe
+        .play()
+        .then(() => {
+          probe.pause?.();
+          probe.currentTime = 0;
+        })
+        .catch(() => {
+          // Best-effort warmup; ignore if browser still blocks.
+        });
     }
   }
 }

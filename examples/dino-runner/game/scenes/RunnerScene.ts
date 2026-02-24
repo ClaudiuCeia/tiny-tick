@@ -42,6 +42,7 @@ export class RunnerScene extends Scene {
   private scoredObstacles = new WeakSet<ObstacleEntity>();
 
   private score = 0;
+  private started = false;
   private gameOver = false;
   private spawnTimer = 0;
   private nextSpawnIn = 1.1;
@@ -97,6 +98,7 @@ export class RunnerScene extends Scene {
       this.hudEntity.addComponent(
         new RunnerHudComponent(() => ({
           score: this.score,
+          started: this.started,
           gameOver: this.gameOver,
           fontFamily: this.assets?.fonts.ui.family,
         })),
@@ -111,6 +113,19 @@ export class RunnerScene extends Scene {
 
   public override update(dt: number): void {
     EcsRuntime.runWith(this.runtime, () => {
+      const startPressed =
+        this.runtime.input.isPressed(" ") ||
+        this.runtime.input.isPressed("Space") ||
+        this.runtime.input.isPressed("ArrowUp") ||
+        this.runtime.input.isPressed("w") ||
+        this.runtime.input.isPressed("W") ||
+        this.runtime.input.isMouseClick();
+
+      if (!this.started) {
+        if (!startPressed) return;
+        this.started = true;
+      }
+
       const restartPressed = this.runtime.input.isPressed("r") || this.runtime.input.isPressed("R");
 
       if (this.gameOver) {
@@ -362,6 +377,7 @@ export class RunnerScene extends Scene {
   }
 
   private resetRun(): void {
+    this.started = false;
     this.gameOver = false;
     this.score = 0;
     this.spawnTimer = 0;
@@ -385,17 +401,15 @@ export class RunnerScene extends Scene {
   }
 
   private playSfx(audio?: HTMLAudioElement): void {
-    if (!audio) return;
-    const instance = audio.cloneNode(true) as HTMLAudioElement;
-    instance.volume = 0.4;
-    instance.currentTime = 0;
-    void instance.play().catch(() => {
-      // Ignore autoplay restrictions in dev/tests.
-    });
+    this.runtime.assets.playAudio(audio, { volume: 0.4 });
   }
 
   public getScore(): number {
     return this.score;
+  }
+
+  public startRunForTest(): void {
+    this.started = true;
   }
 
   public getObstacleCount(): number {

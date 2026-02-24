@@ -77,6 +77,7 @@ describe("dino-runner smoke", () => {
     const world = makeWorld(runtime, scene);
 
     scene.awake();
+    scene.startRunForTest();
     stepWorld(world, 0.5);
 
     expect(scene.getScore()).toBe(0);
@@ -91,6 +92,7 @@ describe("dino-runner smoke", () => {
     const scene = new RunnerScene(runtime, makeCanvas());
     const world = makeWorld(runtime, scene);
     scene.awake();
+    scene.startRunForTest();
 
     const before = scene.getRunnerPositionForTest().y;
     emit(handlers, "keydown", { key: "Space" });
@@ -107,6 +109,7 @@ describe("dino-runner smoke", () => {
     const world = makeWorld(runtime, scene);
 
     scene.awake();
+    scene.startRunForTest();
     stepWorld(world, 1.5);
 
     expect(scene.getObstacleCount()).toBeGreaterThan(0);
@@ -119,6 +122,7 @@ describe("dino-runner smoke", () => {
     const world = makeWorld(runtime, scene);
 
     scene.awake();
+    scene.startRunForTest();
     scene.spawnObstacleForTest(new Vector2D(20, 436), { width: 20, height: 28, speed: 0 });
     world.step(0.016);
 
@@ -134,6 +138,7 @@ describe("dino-runner smoke", () => {
     const scene = new RunnerScene(runtime, makeCanvas());
     const world = makeWorld(runtime, scene);
     scene.awake();
+    scene.startRunForTest();
 
     scene.spawnObstacleForTest(scene.getRunnerPositionForTest());
     world.step(0.016);

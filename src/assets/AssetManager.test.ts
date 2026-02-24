@@ -19,6 +19,75 @@ const mockImage = (width: number, height: number, src: string): HTMLImageElement
   }) as unknown as HTMLImageElement;
 
 describe("AssetManager", () => {
+  test("playAudio queues before unlock and drains on first gesture", async () => {
+    const manager = new AssetManager();
+    const listeners = new Map<string, EventListener[]>();
+    const target = {
+      addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => {
+        const list = listeners.get(type) ?? [];
+        const fn =
+          typeof listener === "function"
+            ? listener
+            : (((event: Event) => listener.handleEvent(event)) as EventListener);
+        list.push(fn);
+        listeners.set(type, list);
+      },
+      removeEventListener: (type: string, listener: EventListenerOrEventListenerObject) => {
+        const list = listeners.get(type) ?? [];
+        const fn =
+          typeof listener === "function"
+            ? listener
+            : (((event: Event) => listener.handleEvent(event)) as EventListener);
+        listeners.set(
+          type,
+          list.filter((entry) => entry !== fn),
+        );
+      },
+    } as unknown as EventTarget;
+
+    let plays = 0;
+    const audio = {
+      cloneNode: () =>
+        ({
+          volume: 1,
+          currentTime: 0,
+          play: async () => {
+            plays++;
+          },
+        }) as HTMLAudioElement,
+    } as unknown as HTMLAudioElement;
+
+    manager.playAudio(audio, { volume: 0.4, unlockTarget: target });
+    expect(plays).toBe(0);
+
+    for (const listener of listeners.get("pointerdown") ?? []) {
+      listener(new Event("pointerdown"));
+    }
+    await Promise.resolve();
+
+    expect(plays).toBe(1);
+  });
+
+  test("playAudio with no unlock target plays immediately", async () => {
+    const manager = new AssetManager();
+
+    let plays = 0;
+    const audio = {
+      cloneNode: () =>
+        ({
+          volume: 1,
+          currentTime: 0,
+          play: async () => {
+            plays++;
+          },
+        }) as HTMLAudioElement,
+    } as unknown as HTMLAudioElement;
+
+    manager.playAudio(audio, { volume: 0.5, unlockTarget: null });
+    await Promise.resolve();
+    expect(plays).toBe(1);
+  });
+
   test("deduplicates same image URL across scopes and cleans up on last release", async () => {
     let imageLoads = 0;
     const disposed: string[] = [];

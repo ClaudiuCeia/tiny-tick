@@ -9,6 +9,7 @@ import {
 export type RunnerHudSnapshot = {
   score: number;
   gameOver: boolean;
+  started: boolean;
   fontFamily?: string;
 };
 
@@ -43,6 +44,25 @@ export class RunnerHudComponent extends HudRenderComponent<Entity> {
     ctx.shadowColor = "transparent";
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
+
+    if (!snapshot.started) {
+      const centerX = _canvasSize.x / 2;
+      const centerY = _canvasSize.y / 2;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      ctx.fillRect(centerX - 260, centerY - 84, 520, 170);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `42px "${fontFamily}", monospace`;
+      ctx.fillText("Press Space To Start", centerX, centerY - 16);
+
+      ctx.font = `20px "${fontFamily}", monospace`;
+      ctx.fillText("or click/tap to focus audio", centerX, centerY + 34);
+      ctx.restore();
+      return;
+    }
 
     if (!snapshot.gameOver) {
       ctx.restore();
