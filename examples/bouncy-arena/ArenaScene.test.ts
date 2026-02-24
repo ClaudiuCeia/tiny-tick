@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { EcsRuntime, EntityRegistry, Vector2D, type ICanvas } from "../../index.ts";
+import {
+  EcsRuntime,
+  EntityRegistry,
+  PhysicsSystem,
+  SystemPhase,
+  SystemTickMode,
+  Vector2D,
+  World,
+  type ICanvas,
+} from "../../index.ts";
 import { ArenaScene } from "./game/scenes/ArenaScene.ts";
 
 type HandlerMap = Record<string, Array<(event: any) => void>>;
@@ -24,6 +33,13 @@ const emit = (handlers: HandlerMap, type: string, event: any): void => {
   }
 };
 
+const stepWorld = (world: World, totalTime: number, dt = 1 / 60): void => {
+  const steps = Math.ceil(totalTime / dt);
+  for (let i = 0; i < steps; i++) {
+    world.step(dt);
+  }
+};
+
 const makeCanvas = (): ICanvas => {
   const ctx = {
     fillStyle: "",
@@ -37,12 +53,31 @@ const makeCanvas = (): ICanvas => {
 };
 
 describe("bouncy-arena smoke", () => {
+  const makeWorld = (runtime: EcsRuntime, scene: ArenaScene): World => {
+    const world = new World({ runtime, fixedDeltaTime: 1 / 120, maxSubSteps: 8 });
+    world.addSystem({
+      phase: SystemPhase.Simulation,
+      tickMode: SystemTickMode.Fixed,
+      update(dt) {
+        scene.update(dt);
+      },
+    });
+    world.addSystem(
+      new PhysicsSystem({
+        gravity: Vector2D.zero,
+        velocityIterations: 6,
+      }),
+    );
+    return world;
+  };
+
   test("scene boots and updates", () => {
     const runtime = new EcsRuntime(new EntityRegistry());
     const scene = new ArenaScene(runtime, makeCanvas());
+    const world = makeWorld(runtime, scene);
 
     scene.awake();
-    scene.update(0.016);
+    world.step(0.016);
 
     expect(scene.getPlayerHp()).toBe(3);
     scene.destroy();
@@ -51,9 +86,10 @@ describe("bouncy-arena smoke", () => {
   test("enemy spawns over time", () => {
     const runtime = new EcsRuntime(new EntityRegistry());
     const scene = new ArenaScene(runtime, makeCanvas());
+    const world = makeWorld(runtime, scene);
 
     scene.awake();
-    scene.update(1.0);
+    stepWorld(world, 1.0);
 
     expect(scene.getEnemyCount()).toBeGreaterThan(0);
     scene.destroy();
@@ -65,6 +101,7 @@ describe("bouncy-arena smoke", () => {
     runtime.input.init(makeTarget(handlers));
 
     const scene = new ArenaScene(runtime, makeCanvas());
+    const world = makeWorld(runtime, scene);
     scene.awake();
 
     const playerPos = scene.getPlayerPositionForTest();
@@ -73,7 +110,7 @@ describe("bouncy-arena smoke", () => {
     emit(handlers, "keydown", { key: "ArrowRight" });
     emit(handlers, "keydown", { key: "Space" });
 
-    scene.update(0.016);
+    world.step(0.016);
 
     expect(scene.getScore()).toBe(1);
     scene.destroy();
@@ -85,6 +122,7 @@ describe("bouncy-arena smoke", () => {
     runtime.input.init(makeTarget(handlers));
 
     const scene = new ArenaScene(runtime, makeCanvas());
+    const world = makeWorld(runtime, scene);
     scene.awake();
 
     scene.spawnEnemyForTest(new Vector2D(400, 300));
@@ -92,7 +130,7 @@ describe("bouncy-arena smoke", () => {
     expect(scene.isGameOver()).toBe(true);
 
     emit(handlers, "keydown", { key: "r" });
-    scene.update(0.016);
+    world.step(0.016);
 
     expect(scene.isGameOver()).toBe(false);
     expect(scene.getPlayerHp()).toBe(3);

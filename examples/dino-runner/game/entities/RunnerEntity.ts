@@ -1,6 +1,7 @@
 import {
   CollisionEntity,
   Entity,
+  PhysicsBodyComponent,
   RectangleCollisionShape,
   TransformComponent,
   type Vector2D,
@@ -16,7 +17,15 @@ export class RunnerEntity extends Entity {
   constructor(start: Vector2D, groundY: number) {
     super();
     this.addComponent(new TransformComponent({ position: start, rotation: 0, scale: 1 }));
-    this.addComponent(new RunnerJumpComponent(groundY, -460, 1400));
+    this.addComponent(
+      new PhysicsBodyComponent({
+        gravityScale: 0,
+        friction: 0,
+        restitution: 0,
+        linearDamping: 0,
+      }),
+    );
+    this.addComponent(new RunnerJumpComponent(groundY, -460));
     this.addComponent(new RectRenderComponent("#4ecdc4"));
 
     this.collider = new CollisionEntity(
@@ -42,5 +51,9 @@ export class RunnerEntity extends Entity {
 
   public getPosition(): Vector2D {
     return this.getComponent(TransformComponent).globalTransform.position;
+  }
+
+  public getBody(): PhysicsBodyComponent {
+    return this.getComponent(PhysicsBodyComponent);
   }
 }

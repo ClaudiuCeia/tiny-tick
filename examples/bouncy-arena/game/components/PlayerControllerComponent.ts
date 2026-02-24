@@ -1,4 +1,4 @@
-import { Component, TransformComponent, Vector2D } from "../lib.ts";
+import { Component, PhysicsBodyComponent, TransformComponent, Vector2D } from "../lib.ts";
 import type { PlayerEntity } from "../entities/PlayerEntity.ts";
 
 type ShootCallback = (position: Vector2D, direction: Vector2D) => void;
@@ -14,7 +14,7 @@ export class PlayerControllerComponent extends Component<PlayerEntity> {
     super();
   }
 
-  public override update(dt: number): void {
+  public override update(_dt: number): void {
     const input = this.ent.runtime.input;
 
     let moveX = 0;
@@ -28,12 +28,12 @@ export class PlayerControllerComponent extends Component<PlayerEntity> {
     if (moveX !== 0 || moveY !== 0) {
       const direction = new Vector2D(moveX, moveY).normalize();
       this.ent.facing = direction;
-
-      const transform = this.ent.getComponent(TransformComponent);
-      transform.translate(direction.x * this.speed * dt, direction.y * this.speed * dt);
+      this.ent.getComponent(PhysicsBodyComponent).setVelocity(direction.multiply(this.speed));
+    } else {
+      this.ent.getComponent(PhysicsBodyComponent).setVelocity(Vector2D.zero);
     }
 
-    this.shootCooldown = Math.max(0, this.shootCooldown - dt);
+    this.shootCooldown = Math.max(0, this.shootCooldown - _dt);
 
     const shootPressed = input.isPressed("Space") || input.isPressed(" ");
     if (!shootPressed || this.shootCooldown > 0) {

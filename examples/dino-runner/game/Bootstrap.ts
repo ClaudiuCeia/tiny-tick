@@ -1,5 +1,6 @@
 import {
   EcsRuntime,
+  PhysicsSystem,
   SceneManager,
   SystemPhase,
   SystemTickMode,
@@ -57,6 +58,17 @@ export const bootstrapDinoRunner = (mount: HTMLElement = document.body): void =>
       sceneManager.update(dt);
     },
   });
+
+  world.addSystem(
+    new PhysicsSystem({
+      gravity: new Vector2D(0, 1400),
+      velocityIterations: 8,
+      positionIterations: 2,
+      broadphaseCellSize: 64,
+      sleepLinearThreshold: 2,
+      sleepTimeThreshold: 0.2,
+    }),
+  );
 
   world.addSystem({
     phase: SystemPhase.Render,

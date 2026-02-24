@@ -1,6 +1,8 @@
 import {
   CollisionEntity,
   Entity,
+  PhysicsBodyComponent,
+  PhysicsBodyType,
   RectangleCollisionShape,
   TransformComponent,
   Vector2D,
@@ -18,6 +20,15 @@ export class EnemyEntity extends Entity {
   ) {
     super();
     this.addComponent(new TransformComponent({ position, rotation: 0, scale: 1 }));
+    this.addComponent(
+      new PhysicsBodyComponent({
+        type: PhysicsBodyType.Kinematic,
+        gravityScale: 0,
+        linearDamping: 0,
+        friction: 0.1,
+        restitution: 0,
+      }),
+    );
     this.addComponent(new EnemyChaseComponent(getTargetPosition));
     this.addComponent(new RectRenderComponent("#ff6b6b"));
 

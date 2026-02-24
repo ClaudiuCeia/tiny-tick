@@ -1,6 +1,8 @@
 import {
   CollisionEntity,
   Entity,
+  PhysicsBodyComponent,
+  PhysicsBodyType,
   RectangleCollisionShape,
   RenderLayer,
   TransformComponent,
@@ -15,6 +17,15 @@ export class BulletEntity extends Entity {
   constructor(position: Vector2D, direction: Vector2D, bounds: { width: number; height: number }) {
     super();
     this.addComponent(new TransformComponent({ position, rotation: 0, scale: 1 }));
+    this.addComponent(
+      new PhysicsBodyComponent({
+        type: PhysicsBodyType.Kinematic,
+        gravityScale: 0,
+        friction: 0,
+        restitution: 0,
+        canSleep: false,
+      }),
+    );
     this.addComponent(new BulletMotionComponent(direction.normalize(), 420, 1.2, bounds));
     this.addComponent(new RectRenderComponent("#ffe66d", RenderLayer.World));
 

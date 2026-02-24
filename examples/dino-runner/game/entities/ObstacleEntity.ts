@@ -1,6 +1,8 @@
 import {
   CollisionEntity,
   Entity,
+  PhysicsBodyComponent,
+  PhysicsBodyType,
   RectangleCollisionShape,
   TransformComponent,
   type Vector2D,
@@ -14,6 +16,14 @@ export class ObstacleEntity extends Entity {
   constructor(position: Vector2D, width: number, height: number, speed: number) {
     super();
     this.addComponent(new TransformComponent({ position, rotation: 0, scale: 1 }));
+    this.addComponent(
+      new PhysicsBodyComponent({
+        type: PhysicsBodyType.Kinematic,
+        gravityScale: 0,
+        friction: 0,
+        restitution: 0,
+      }),
+    );
     this.addComponent(new ObstacleMoveComponent(speed));
     this.addComponent(new RectRenderComponent("#ff6b6b"));
 
@@ -27,5 +37,9 @@ export class ObstacleEntity extends Entity {
 
   public getCollider(): CollisionEntity {
     return this.collider;
+  }
+
+  public getBody(): PhysicsBodyComponent {
+    return this.getComponent(PhysicsBodyComponent);
   }
 }

@@ -1,6 +1,7 @@
 import {
   EcsRuntime,
   Entity,
+  PhysicsBodyType,
   RenderSystem,
   Scene,
   TransformComponent,
@@ -141,6 +142,18 @@ export class RunnerScene extends Scene {
     this.subscriptions.push(
       this.eventBus.subscribe("game_over", () => {
         this.gameOver = true;
+        if (this.runner) {
+          const body = this.runner.getBody();
+          body.setVelocity(Vector2D.zero);
+          body.setGravityScale(0);
+          body.setBodyType(PhysicsBodyType.Static);
+        }
+        for (const obstacle of this.obstacles) {
+          if (!obstacle.isAwake) continue;
+          const body = obstacle.getBody();
+          body.setVelocity(Vector2D.zero);
+          body.setBodyType(PhysicsBodyType.Static);
+        }
       }),
     );
     this.subscriptions.push(

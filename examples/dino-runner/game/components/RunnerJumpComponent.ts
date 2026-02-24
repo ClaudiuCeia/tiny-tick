@@ -1,18 +1,15 @@
-import { Component, TransformComponent } from "../lib.ts";
+import { Component, PhysicsBodyComponent, TransformComponent, Vector2D } from "../lib.ts";
 import type { RunnerEntity } from "../entities/RunnerEntity.ts";
 
 export class RunnerJumpComponent extends Component<RunnerEntity> {
-  private verticalVelocity = 0;
-
   constructor(
     private readonly groundY: number,
     private readonly jumpVelocity: number,
-    private readonly gravity: number,
   ) {
     super();
   }
 
-  public override update(dt: number): void {
+  public override update(_dt: number): void {
     const input = this.ent.runtime.input;
     const jumpPressed =
       input.isPressed(" ") ||
@@ -22,18 +19,20 @@ export class RunnerJumpComponent extends Component<RunnerEntity> {
       input.isPressed("W");
 
     if (jumpPressed && this.ent.isGrounded(this.groundY)) {
-      this.verticalVelocity = this.jumpVelocity;
+      const body = this.ent.getComponent(PhysicsBodyComponent);
+      body.setGravityScale(1);
+      const velocity = body.getVelocity();
+      body.setVelocity(new Vector2D(velocity.x, this.jumpVelocity));
     }
-
-    this.verticalVelocity += this.gravity * dt;
-
     const transform = this.ent.getComponent(TransformComponent);
-    transform.translate(0, this.verticalVelocity * dt);
+    const body = this.ent.getComponent(PhysicsBodyComponent);
 
     const playerBottom = transform.transform.position.y + this.ent.height / 2;
-    if (playerBottom >= this.groundY) {
+    if (playerBottom >= this.groundY && body.getVelocity().y >= 0) {
       transform.transform.position.y = this.groundY - this.ent.height / 2;
-      this.verticalVelocity = 0;
+      body.setGravityScale(0);
+      const velocity = body.getVelocity();
+      body.setVelocity(new Vector2D(velocity.x, 0));
     }
   }
 }

@@ -1,6 +1,8 @@
 import {
   CollisionEntity,
   Entity,
+  PhysicsBodyComponent,
+  PhysicsBodyType,
   RectangleCollisionShape,
   TransformComponent,
   Vector2D,
@@ -15,6 +17,15 @@ export class PlayerEntity extends Entity {
   constructor(position: Vector2D, onShoot: (position: Vector2D, direction: Vector2D) => void) {
     super();
     this.addComponent(new TransformComponent({ position, rotation: 0, scale: 1 }));
+    this.addComponent(
+      new PhysicsBodyComponent({
+        type: PhysicsBodyType.Kinematic,
+        gravityScale: 0,
+        linearDamping: 0,
+        friction: 0.2,
+        restitution: 0,
+      }),
+    );
     this.addComponent(new PlayerControllerComponent(240, 0.15, onShoot));
     this.addComponent(new RectRenderComponent("#4ecdc4"));
 

@@ -1,16 +1,25 @@
 # @claudiu-ceia/tiny-tick
 
-Tiny game toolkit playground.
+Tiny 2D game kitchen-sink for TypeScript + Bun.
 
-This came out of experiments around ideas from a couple of JS based game projects.
+## Overview
 
-## Important
+`tiny-tick` is a small ECS-style runtime toolkit extracted from previous JS game experiments. 
 
-This is **not** a serious production library right now.
+It currently includes:
 
-It is mostly a personal playground where I try ideas, break things, and learn.
-If it helps someone else, great, but I do not recommend depending on it yet.
-This is only published so I can use it in my own projects rather than copy-pasting code around.
+- ECS primitives (`Entity`, `Component`, `EntityRegistry`)
+- Ordered/fixed-step world scheduler (`World` + systems)
+- Input manager (keyboard + mouse state)
+- Collision shapes/entities + broadphase (`SpatialHashBroadphase`)
+- Lightweight physics (`PhysicsBodyComponent`, `PhysicsSystem`)
+- Render/scene utilities and a few debug helpers
+
+## Status
+
+This is not a serious production engine right now (probably never).
+
+It is mostly a personal playground for experimenting and learning. I publish it so I can reuse it across projects without copy-pasting.
 
 ## Install
 
@@ -18,19 +27,47 @@ This is only published so I can use it in my own projects rather than copy-pasti
 bun add @claudiu-ceia/tiny-tick
 ```
 
-## Usage
+## Quickstart
 
 ```ts
-import { Entity, EcsRuntime } from "@claudiu-ceia/tiny-tick";
+import {
+  EcsRuntime,
+  Entity,
+  PhysicsBodyComponent,
+  PhysicsSystem,
+  RectangleCollisionShape,
+  CollisionEntity,
+  TransformComponent,
+  Vector2D,
+  World,
+} from "@claudiu-ceia/tiny-tick";
 
-class Player extends Entity {}
+class Box extends Entity {
+  constructor() {
+    super();
+    this.addComponent(new TransformComponent({ position: new Vector2D(100, 80), rotation: 0, scale: 1 }));
+    this.addComponent(new PhysicsBodyComponent());
+    this.addChild(new CollisionEntity(new RectangleCollisionShape(24, 24), "center"));
+  }
+}
 
 const runtime = new EcsRuntime();
+const world = new World({ runtime, fixedDeltaTime: 1 / 60 });
+world.addSystem(new PhysicsSystem());
+
 EcsRuntime.runWith(runtime, () => {
-  const player = new Player();
-  player.awake();
+  const box = new Box();
+  box.awake();
 });
 ```
+
+## Examples
+
+Run locally:
+
+- `bun run example:bouncy-arena`
+- `bun run example:dino-runner`
+- `bun run example:collision-lab`
 
 ## Development
 
@@ -39,7 +76,7 @@ bun install
 bun run check
 ```
 
-Scripts:
+Useful scripts:
 
 - `bun run typecheck`
 - `bun run lint`
@@ -48,9 +85,6 @@ Scripts:
 - `bun run test`
 - `bun run test:coverage`
 - `bun run check`
-- `bun run example:bouncy-arena`
-- `bun run example:dino-runner`
-- `bun run example:collision-lab`
 
 ## License
 

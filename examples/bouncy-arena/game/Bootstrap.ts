@@ -1,5 +1,6 @@
 import {
   EcsRuntime,
+  PhysicsSystem,
   SceneManager,
   SystemPhase,
   SystemTickMode,
@@ -58,6 +59,17 @@ export const bootstrapBouncyArena = (mount: HTMLElement = document.body): void =
       sceneManager.update(dt);
     },
   });
+
+  world.addSystem(
+    new PhysicsSystem({
+      gravity: Vector2D.zero,
+      velocityIterations: 6,
+      positionIterations: 2,
+      broadphaseCellSize: 64,
+      sleepLinearThreshold: 4,
+      sleepTimeThreshold: 0.25,
+    }),
+  );
 
   world.addSystem({
     phase: SystemPhase.Render,

@@ -1,6 +1,7 @@
 import {
   EcsRuntime,
   Entity,
+  PhysicsBodyComponent,
   RenderSystem,
   Scene,
   TransformComponent,
@@ -141,6 +142,9 @@ export class ArenaScene extends Scene {
     this.subscriptions.push(
       this.eventBus.subscribe("game_over", () => {
         this.gameOver = true;
+        if (this.player) {
+          this.player.getComponent(PhysicsBodyComponent).setVelocity(Vector2D.zero);
+        }
       }),
     );
     this.subscriptions.push(
@@ -181,9 +185,16 @@ export class ArenaScene extends Scene {
   private clampPlayerToArena(): void {
     if (!this.player) return;
     const transform = this.player.getComponent(TransformComponent);
+    const body = this.player.getComponent(PhysicsBodyComponent);
     const pos = transform.transform.position;
-    pos.x = Math.max(14, Math.min(this.canvas.size.x - 14, pos.x));
-    pos.y = Math.max(14, Math.min(this.canvas.size.y - 14, pos.y));
+    const clampedX = Math.max(14, Math.min(this.canvas.size.x - 14, pos.x));
+    const clampedY = Math.max(14, Math.min(this.canvas.size.y - 14, pos.y));
+
+    if (clampedX !== pos.x || clampedY !== pos.y) {
+      pos.x = clampedX;
+      pos.y = clampedY;
+      body.setVelocity(Vector2D.zero);
+    }
   }
 
   private resolveBulletVsEnemy(): void {

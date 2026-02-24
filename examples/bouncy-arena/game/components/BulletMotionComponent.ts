@@ -1,8 +1,9 @@
-import { Component, TransformComponent, type Vector2D } from "../lib.ts";
+import { Component, PhysicsBodyComponent, TransformComponent, type Vector2D } from "../lib.ts";
 import type { BulletEntity } from "../entities/BulletEntity.ts";
 
 export class BulletMotionComponent extends Component<BulletEntity> {
   private lifeRemaining: number;
+  private initialized = false;
 
   constructor(
     private readonly direction: Vector2D,
@@ -15,12 +16,13 @@ export class BulletMotionComponent extends Component<BulletEntity> {
   }
 
   public override update(dt: number): void {
+    if (!this.initialized) {
+      this.ent.getComponent(PhysicsBodyComponent).setVelocity(this.direction.multiply(this.speed));
+      this.initialized = true;
+    }
+
     this.lifeRemaining -= dt;
-
-    const transform = this.ent.getComponent(TransformComponent);
-    transform.translate(this.direction.x * this.speed * dt, this.direction.y * this.speed * dt);
-
-    const pos = transform.globalTransform.position;
+    const pos = this.ent.getComponent(TransformComponent).globalTransform.position;
     const outsideBounds =
       pos.x < -32 ||
       pos.y < -32 ||
