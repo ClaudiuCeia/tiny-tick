@@ -1,11 +1,4 @@
-import {
-  CollisionEntity,
-  RenderComponent,
-  RenderLayer,
-  Vector2D,
-  fitRectContain,
-  type ICamera,
-} from "../lib.ts";
+import { SpriteAnimator, SpriteRenderComponent, RenderLayer } from "../lib.ts";
 import type { RunnerEntity } from "../entities/RunnerEntity.ts";
 
 type SpriteSet = {
@@ -16,50 +9,43 @@ type SpriteSet = {
   hit: HTMLImageElement;
 };
 
-export class RunnerSpriteRenderComponent extends RenderComponent<RunnerEntity> {
-  private animationTime = 0;
+export class RunnerSpriteRenderComponent extends SpriteRenderComponent<RunnerEntity> {
+  private readonly animator: SpriteAnimator<HTMLImageElement>;
+  private state: "run" | "jump" | "hit" = "run";
 
-  constructor(private readonly sprites: SpriteSet) {
-    super(RenderLayer.World);
+  constructor(sprites: SpriteSet) {
+    const animator = new SpriteAnimator(sprites.idle);
+    animator
+      .defineClip("run", {
+        frames: [sprites.walkA, sprites.walkB],
+        frameDuration: 0.12,
+        loop: true,
+      })
+      .defineClip("jump", { frames: [sprites.jump], frameDuration: 1, loop: false })
+      .defineClip("hit", { frames: [sprites.hit], frameDuration: 1, loop: false })
+      .play("run");
+
+    super({
+      zIndex: RenderLayer.World,
+      sprite: () => animator.getFrame(),
+      align: { x: "center", y: "bottom" },
+    });
+    this.animator = animator;
   }
 
   public override update(dt: number): void {
     super.update(dt);
-    this.animationTime += dt;
+    const nextState = this.pickState();
+    if (nextState !== this.state) {
+      this.state = nextState;
+      this.animator.play(nextState);
+    }
+    this.animator.update(dt);
   }
 
-  public override doRender(
-    ctx: CanvasRenderingContext2D,
-    camera: ICamera,
-    canvasSize: Vector2D,
-  ): void {
-    const collider = this.ent.getChild(CollisionEntity);
-    if (!collider) return;
-
-    const bbox = collider.bbox();
-    const topLeft = camera.toCanvas(new Vector2D(bbox.x, bbox.y), canvasSize);
-
-    const sprite = this.pickSprite();
-    const drawRect = fitRectContain(
-      sprite.naturalWidth || sprite.width,
-      sprite.naturalHeight || sprite.height,
-      {
-        x: topLeft.x,
-        y: topLeft.y,
-        width: bbox.width,
-        height: bbox.height,
-      },
-    );
-    // Characters should be visually grounded: preserve aspect ratio but pin feet to collider bottom.
-    const groundedY = topLeft.y + bbox.height - drawRect.height;
-    ctx.drawImage(sprite, drawRect.x, groundedY, drawRect.width, drawRect.height);
-  }
-
-  private pickSprite(): HTMLImageElement {
-    if (this.ent.isDead) return this.sprites.hit;
-    if (!this.ent.isGrounded(this.ent.groundY)) return this.sprites.jump;
-
-    const frame = Math.floor(this.animationTime / 0.12) % 2;
-    return frame === 0 ? this.sprites.walkA : this.sprites.walkB;
+  private pickState(): "run" | "jump" | "hit" {
+    if (this.ent.isDead) return "hit";
+    if (!this.ent.isGrounded(this.ent.groundY)) return "jump";
+    return "run";
   }
 }

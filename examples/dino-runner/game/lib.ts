@@ -16,6 +16,8 @@ export {
   RenderSystem,
   Scene,
   SceneManager,
+  SpriteAnimator,
+  SpriteRenderComponent,
   SystemPhase,
   SystemTickMode,
   TransformComponent,
