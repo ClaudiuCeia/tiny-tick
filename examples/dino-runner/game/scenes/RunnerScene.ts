@@ -1,9 +1,11 @@
 import {
   EcsRuntime,
   Entity,
+  ParallaxLayer,
   PhysicsBodyType,
   RenderSystem,
   Scene,
+  TileScroller,
   TransformComponent,
   Vector2D,
   type ICanvas,
@@ -48,8 +50,9 @@ export class RunnerScene extends Scene {
   private readonly groundY: number;
   private readonly runnerX = 120;
   private readonly worldScrollSpeed = 260;
-  private cloudOffset = 0;
-  private terrainOffset = 0;
+  private readonly terrainScroller = new TileScroller(this.worldScrollSpeed, 0);
+  private readonly cloudsLayer: ParallaxLayer | null;
+  private readonly desertLayer: ParallaxLayer | null;
 
   constructor(
     private readonly runtime: EcsRuntime,
@@ -58,6 +61,24 @@ export class RunnerScene extends Scene {
   ) {
     super();
     this.groundY = this.canvas.size.y - 50;
+    if (this.assets) {
+      this.cloudsLayer = new ParallaxLayer({
+        image: this.assets.images.backgroundClouds,
+        repeat: "x",
+        speedX: 48,
+        alpha: 0.9,
+        seamOverlapPx: 1,
+      });
+      this.desertLayer = new ParallaxLayer({
+        image: this.assets.images.backgroundColor,
+        repeat: "x",
+        speedX: 19.2,
+        seamOverlapPx: 1,
+      });
+    } else {
+      this.cloudsLayer = null;
+      this.desertLayer = null;
+    }
   }
 
   public override awake(): void {
@@ -99,8 +120,9 @@ export class RunnerScene extends Scene {
         return;
       }
 
-      this.cloudOffset += dt * 48;
-      this.terrainOffset += dt * this.worldScrollSpeed;
+      this.cloudsLayer?.update(dt);
+      this.desertLayer?.update(dt);
+      this.terrainScroller.update(dt);
 
       this.spawnTimer += dt;
       if (this.spawnTimer >= this.nextSpawnIn) {
@@ -150,9 +172,7 @@ export class RunnerScene extends Scene {
 
     const color = this.assets.images.backgroundColor;
     const clouds = this.assets.images.backgroundClouds;
-    const tileWidth = color.naturalWidth || color.width || 256;
     const tileHeight = color.naturalHeight || color.height || 256;
-    const cloudWidth = clouds.naturalWidth || clouds.width || 256;
     const cloudHeight = clouds.naturalHeight || clouds.height || 256;
 
     // Sky base.
@@ -162,20 +182,10 @@ export class RunnerScene extends Scene {
     // Desert band anchored to terrain so it never "floats" above ground.
     const desertY = Math.floor(this.groundY - tileHeight);
 
-    // Clouds parallax on a fixed horizon band.
-    const cloudOffset = this.cloudOffset % cloudWidth;
     const cloudY = desertY - cloudHeight + 1; // +1px overlap avoids seams from alpha edges.
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    for (let x = -cloudOffset - cloudWidth; x <= this.canvas.size.x + cloudWidth; x += cloudWidth) {
-      ctx.drawImage(clouds, x, cloudY);
-    }
-    ctx.restore();
-
-    const desertOffset = (this.cloudOffset * 0.4) % tileWidth;
-    for (let x = -desertOffset - tileWidth; x <= this.canvas.size.x + tileWidth; x += tileWidth) {
-      ctx.drawImage(color, x, desertY);
-    }
+    const viewport = { width: this.canvas.size.x, height: this.canvas.size.y };
+    this.cloudsLayer?.render(ctx, viewport, { originY: cloudY });
+    this.desertLayer?.render(ctx, viewport, { originY: desertY });
 
     this.renderTerrain(ctx);
   }
@@ -191,8 +201,8 @@ export class RunnerScene extends Scene {
     const tileSize = 32;
     const yStart = Math.floor(this.groundY);
     const rows = Math.ceil((this.canvas.size.y - yStart) / tileSize);
+    const xOffset = this.terrainScroller.getOffset().x % tileSize;
     const cols = Math.ceil(this.canvas.size.x / tileSize) + 2;
-    const xOffset = this.terrainOffset % tileSize;
 
     for (let row = 0; row < rows; row++) {
       const y = yStart + row * tileSize;
@@ -357,7 +367,9 @@ export class RunnerScene extends Scene {
     this.spawnTimer = 0;
     this.nextSpawnIn = 1.1;
     this.scoredObstacles = new WeakSet<ObstacleEntity>();
-    this.terrainOffset = 0;
+    this.terrainScroller.reset();
+    this.cloudsLayer?.reset();
+    this.desertLayer?.reset();
 
     for (const obstacle of this.obstacles) {
       obstacle.destroy();
