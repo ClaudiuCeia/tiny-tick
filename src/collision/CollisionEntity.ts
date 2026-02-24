@@ -15,14 +15,16 @@ export class CollisionEntity extends Entity {
     public collisionMask: number = 0xffffffff,
   ) {
     super();
-  }
-
-  public override awake(): void {
-    super.awake();
+    // Add components in constructor so bbox() is safe to call even before awake().
+    // Entity.awake() will call component.awake() in the correct order.
     this.addComponent(
       new TransformComponent({ position: new Vector2D(0, 0), rotation: 0, scale: 1 }),
     );
     this.addComponent(new CollisionShapeComponent(this.shape, this.anchorPoint));
+  }
+
+  public override awake(): void {
+    super.awake();
   }
 
   public override update(_dt: number): void {}
