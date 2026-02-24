@@ -1,10 +1,10 @@
-# @claudiu-ceia/tiny-tick
+# @claudiu-ceia/tick
 
 Tiny 2D game kitchen-sink for TypeScript + Bun.
 
 ## Overview
 
-`tiny-tick` is a small ECS-style runtime toolkit extracted from previous JS game experiments.
+`tick` is a small ECS-style runtime toolkit extracted from previous JS game experiments.
 
 It currently includes:
 
@@ -24,7 +24,7 @@ It is mostly a personal playground for experimenting and learning. I publish it 
 ## Install
 
 ```bash
-bun add @claudiu-ceia/tiny-tick
+bun add @claudiu-ceia/tick
 ```
 
 ## Quickstart
@@ -40,7 +40,7 @@ import {
   TransformComponent,
   Vector2D,
   World,
-} from "@claudiu-ceia/tiny-tick";
+} from "@claudiu-ceia/tick";
 
 class Box extends Entity {
   constructor() {
@@ -70,6 +70,30 @@ Run locally:
 - `bun run example:bouncy-arena`
 - `bun run example:dino-runner`
 - `bun run example:collision-lab`
+
+## Assets (runtime-scoped)
+
+Each `EcsRuntime` has an `assets` manager with scope-based lifecycle.
+
+```ts
+const scope = runtime.assets.createScope("main-scene");
+
+await scope.loadImage("atlas", "/assets/runner.png");
+await scope.loadAudio("jump", "/assets/jump.wav");
+await scope.loadFont("pixel", "PixelFont", "url(/assets/pixel.woff2)");
+await scope.loadSpriteSheetGrid("runner", "atlas", {
+  frameWidth: 24,
+  frameHeight: 24,
+  count: 8,
+  columns: 8,
+});
+
+const atlas = scope.getImage("atlas");
+const runSheet = scope.getSpriteSheet("runner");
+
+// On scene teardown:
+scope.release();
+```
 
 ## Development
 

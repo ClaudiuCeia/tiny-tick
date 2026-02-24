@@ -1,15 +1,15 @@
 {
-  "name": "@claudiu-ceia/tiny-tick",
+  "name": "@claudiu-ceia/tick",
   "version": "0.1.3",
   "description": "Tiny runtime-scoped game playground toolkit.",
-  "homepage": "https://github.com/ClaudiuCeia/tiny-tick#readme",
+  "homepage": "https://github.com/ClaudiuCeia/tick#readme",
   "bugs": {
-    "url": "https://github.com/ClaudiuCeia/tiny-tick/issues"
+    "url": "https://github.com/ClaudiuCeia/tick/issues"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ClaudiuCeia/tiny-tick"
+    "url": "https://github.com/ClaudiuCeia/tick"
   },
   "files": [
     "index.ts",

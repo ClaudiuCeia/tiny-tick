@@ -1,6 +1,6 @@
 # bouncy-arena
 
-Small playable example showing how to wire `tiny-tick` into a simple arcade loop.
+Small playable example showing how to wire `tick` into a simple arcade loop.
 
 ## What this proves
 

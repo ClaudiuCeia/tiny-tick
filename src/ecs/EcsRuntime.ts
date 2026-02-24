@@ -1,5 +1,6 @@
 import { EntityRegistry } from "./EntityRegistry.ts";
 import { InputManager } from "../input/Input.ts";
+import { AssetManager } from "../assets/AssetManager.ts";
 
 /**
  * Runtime context that scopes ECS global state.
@@ -10,6 +11,7 @@ export class EcsRuntime {
   constructor(
     public readonly registry: EntityRegistry = new EntityRegistry(),
     public readonly input: InputManager = new InputManager(),
+    public readonly assets: AssetManager = new AssetManager(),
   ) {}
 
   public static getCurrent(): EcsRuntime {

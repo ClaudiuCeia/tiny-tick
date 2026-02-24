@@ -17,6 +17,7 @@ describe("public exports", () => {
     expect(rootApi.World).toBe(srcApi.World);
     expect(rootApi.PhysicsSystem).toBe(srcApi.PhysicsSystem);
     expect(rootApi.PhysicsBodyComponent).toBe(srcApi.PhysicsBodyComponent);
+    expect(rootApi.AssetManager).toBe(srcApi.AssetManager);
     expect(rootApi.ObjectPool).toBe(srcApi.ObjectPool);
     expect(rootApi.EntityProfiler).toBe(srcApi.EntityProfiler);
   });
@@ -30,5 +31,6 @@ describe("public exports", () => {
     expect(typeof rootApi.World).toBe("function");
     expect(typeof rootApi.PhysicsSystem).toBe("function");
     expect(typeof rootApi.PhysicsBodyComponent).toBe("function");
+    expect(typeof rootApi.AssetManager).toBe("function");
   });
 });

@@ -8,5 +8,6 @@ export * from "./scene/index.ts";
 export * from "./input/index.ts";
 export * from "./world/index.ts";
 export * from "./physics/index.ts";
+export * from "./assets/index.ts";
 export * from "./utils/index.ts";
 export * from "./devtools/index.ts";
