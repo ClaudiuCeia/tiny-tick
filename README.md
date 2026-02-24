@@ -4,7 +4,7 @@ Tiny 2D game kitchen-sink for TypeScript + Bun.
 
 ## Overview
 
-`tiny-tick` is a small ECS-style runtime toolkit extracted from previous JS game experiments. 
+`tiny-tick` is a small ECS-style runtime toolkit extracted from previous JS game experiments.
 
 It currently includes:
 
@@ -45,7 +45,9 @@ import {
 class Box extends Entity {
   constructor() {
     super();
-    this.addComponent(new TransformComponent({ position: new Vector2D(100, 80), rotation: 0, scale: 1 }));
+    this.addComponent(
+      new TransformComponent({ position: new Vector2D(100, 80), rotation: 0, scale: 1 }),
+    );
     this.addComponent(new PhysicsBodyComponent());
     this.addChild(new CollisionEntity(new RectangleCollisionShape(24, 24), "center"));
   }

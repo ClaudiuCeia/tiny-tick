@@ -1,4 +1,5 @@
 import type { Entity } from "./Entity.ts";
+import { EntityQuery, type EntityConstructor } from "./EntityQuery.ts";
 
 /**
  * Registry that tracks active entities for a single ECS runtime.
@@ -11,6 +12,8 @@ export class EntityRegistry {
   private typeCache = new Map<Function, Set<Entity>>();
   /** Records which call site created each entity (for debugging) */
   private creationMap = new Map<string, string>();
+  /** Monotonic version used by cached queries for change tracking */
+  private _version = 0;
 
   public constructor() {}
 
@@ -32,6 +35,7 @@ export class EntityRegistry {
       this.typeCache.set(ctor, set);
     }
     set.add(entity);
+    this.markDirty();
   }
 
   public getCreationSite(entityId: string): string | undefined {
@@ -51,6 +55,7 @@ export class EntityRegistry {
         this.typeCache.delete(ctor);
       }
     }
+    this.markDirty();
   }
 
   public getAllEntities(): Entity[] {
@@ -86,11 +91,28 @@ export class EntityRegistry {
     return this.entities.size;
   }
 
+  public get version(): number {
+    return this._version;
+  }
+
+  public markDirty(): void {
+    this._version++;
+  }
+
+  public query<E extends Entity>(type?: EntityConstructor<E>): EntityQuery<E> {
+    return new EntityQuery(this, type);
+  }
+
   /** Clears the registry completely. Both maps are wiped. */
   public clear(): void {
+    const hadEntities =
+      this.entities.size > 0 || this.typeCache.size > 0 || this.creationMap.size > 0;
     this.entities.clear();
     this.typeCache.clear();
     this.creationMap.clear();
+    if (hadEntities) {
+      this.markDirty();
+    }
   }
 
   public dump(): void {
