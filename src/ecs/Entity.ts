@@ -151,15 +151,12 @@ export abstract class Entity implements IWithUpdate, IAwakable {
     let entity: Entity | null = null;
     if (typeof entityOrCb === "function") {
       const entities = this._children.filter(entityOrCb);
-      if (entities.length === 0) {
-        // No match — entity stays null, null guard below returns early
-        entity = entities[0] ?? null;
-      } else {
+      if (entities.length > 0) {
         for (const child of entities) {
           this.removeChild(child);
         }
-        return;
       }
+      return;
     } else {
       entity = entityOrCb;
     }
