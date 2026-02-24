@@ -1,5 +1,7 @@
 export {
   BroadcastEventBus,
+  AssetScope,
+  fitRectContain,
   CollisionEntity,
   Component,
   EcsRuntime,

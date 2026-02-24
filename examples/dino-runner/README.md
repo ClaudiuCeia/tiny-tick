@@ -8,7 +8,10 @@ Small endless runner inspired by the Chrome dinosaur game.
 - Scene lifecycle and reset flow
 - Basic platform-style movement (jump + gravity)
 - Obstacle spawning and collision-driven game over
-- HUD rendering and score updates
+- Asset pipeline usage with scope lifecycle
+- Player sprite animation states (run/jump/hit)
+- Action-timed SFX (jump/land/score/hit)
+- Custom HUD font loading
 
 ## Controls
 
@@ -22,6 +25,20 @@ bun run example:dino-runner
 ```
 
 Then open `http://localhost:5174`.
+
+Optional pixel upscale (nearest-neighbor):
+
+- `http://localhost:5174?pixelScale=2`
+- `http://localhost:5174?pixelScale=3`
+
+## Assets
+
+Assets are stored under `examples/dino-runner/assets/`.
+
+- `kenney_new-platformer-pack-1.1`
+- `kenney_kenney-fonts`
+
+Credits: art, sounds, and fonts by [Kenney](https://kenney.nl/).
 
 ## Test
 

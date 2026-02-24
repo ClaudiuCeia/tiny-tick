@@ -6,6 +6,7 @@ import {
   Scene,
   TransformComponent,
   Vector2D,
+  type AssetScope,
   type ICanvas,
 } from "../lib.ts";
 import { RunnerHudComponent } from "../components/RunnerHudComponent.ts";
@@ -26,6 +27,34 @@ class HudEntity extends Entity {
   }
 }
 
+type RunnerVisualAssets = {
+  scope: AssetScope;
+  fontFamily: string;
+  backgrounds: {
+    color: HTMLImageElement;
+    clouds: HTMLImageElement;
+  };
+  sprites: {
+    idle: HTMLImageElement;
+    jump: HTMLImageElement;
+    walkA: HTMLImageElement;
+    walkB: HTMLImageElement;
+    hit: HTMLImageElement;
+  };
+  obstacleBlocks: [HTMLImageElement, HTMLImageElement, HTMLImageElement];
+  terrainTiles: {
+    top: HTMLImageElement;
+    middle: HTMLImageElement;
+    bottom: HTMLImageElement;
+  };
+  sounds: {
+    jump: HTMLAudioElement;
+    land: HTMLAudioElement;
+    score: HTMLAudioElement;
+    hurt: HTMLAudioElement;
+  };
+};
+
 export class RunnerScene extends Scene {
   private readonly eventBus = createRunnerEventBus();
 
@@ -44,14 +73,19 @@ export class RunnerScene extends Scene {
   private nextSpawnIn = 1.1;
   private readonly subscriptions: string[] = [];
 
-  private readonly groundY = 450;
+  private readonly groundY: number;
   private readonly runnerX = 120;
+  private readonly worldScrollSpeed = 260;
+  private cloudOffset = 0;
+  private terrainOffset = 0;
 
   constructor(
     private readonly runtime: EcsRuntime,
     private readonly canvas: ICanvas,
+    private readonly visuals?: RunnerVisualAssets,
   ) {
     super();
+    this.groundY = this.canvas.size.y - 50;
   }
 
   public override awake(): void {
@@ -71,6 +105,7 @@ export class RunnerScene extends Scene {
         new RunnerHudComponent(() => ({
           score: this.score,
           gameOver: this.gameOver,
+          fontFamily: this.visuals?.fontFamily,
         })),
       );
 
@@ -92,6 +127,9 @@ export class RunnerScene extends Scene {
         return;
       }
 
+      this.cloudOffset += dt * 48;
+      this.terrainOffset += dt * this.worldScrollSpeed;
+
       this.spawnTimer += dt;
       if (this.spawnTimer >= this.nextSpawnIn) {
         this.spawnTimer = 0;
@@ -106,10 +144,11 @@ export class RunnerScene extends Scene {
     });
   }
 
-  public override render(_ctx: CanvasRenderingContext2D): void {
+  public override render(ctx: CanvasRenderingContext2D): void {
     EcsRuntime.runWith(this.runtime, () => {
       if (!this.camera || !this.renderSystem) return;
       this.camera.setViewport(this.canvas.size.x, this.canvas.size.y);
+      this.renderBackground(ctx);
       this.renderSystem.render();
     });
   }
@@ -129,20 +168,79 @@ export class RunnerScene extends Scene {
       this.runner = null;
       this.obstacles = [];
 
+      this.visuals?.scope.release();
       this.runtime.registry.clear();
     });
+  }
+
+  private renderBackground(ctx: CanvasRenderingContext2D): void {
+    if (!this.visuals) return;
+
+    const { color, clouds } = this.visuals.backgrounds;
+    const tileWidth = color.naturalWidth || color.width || 256;
+    const tileHeight = color.naturalHeight || color.height || 256;
+    const cloudWidth = clouds.naturalWidth || clouds.width || 256;
+    const cloudHeight = clouds.naturalHeight || clouds.height || 256;
+
+    // Sky base.
+    ctx.fillStyle = "#c3e3ff";
+    ctx.fillRect(0, 0, this.canvas.size.x, this.canvas.size.y);
+
+    // Desert band anchored to terrain so it never "floats" above ground.
+    const desertY = Math.floor(this.groundY - tileHeight);
+
+    // Clouds parallax on a fixed horizon band.
+    const cloudOffset = this.cloudOffset % cloudWidth;
+    const cloudY = desertY - cloudHeight + 1; // +1px overlap avoids seams from alpha edges.
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    for (let x = -cloudOffset - cloudWidth; x <= this.canvas.size.x + cloudWidth; x += cloudWidth) {
+      ctx.drawImage(clouds, x, cloudY);
+    }
+    ctx.restore();
+
+    const desertOffset = (this.cloudOffset * 0.4) % tileWidth;
+    for (let x = -desertOffset - tileWidth; x <= this.canvas.size.x + tileWidth; x += tileWidth) {
+      ctx.drawImage(color, x, desertY);
+    }
+
+    this.renderTerrain(ctx);
+  }
+
+  private renderTerrain(ctx: CanvasRenderingContext2D): void {
+    if (!this.visuals) return;
+
+    const tiles = this.visuals.terrainTiles;
+    const tileSize = 32;
+    const yStart = Math.floor(this.groundY);
+    const rows = Math.ceil((this.canvas.size.y - yStart) / tileSize);
+    const cols = Math.ceil(this.canvas.size.x / tileSize) + 2;
+    const xOffset = this.terrainOffset % tileSize;
+
+    for (let row = 0; row < rows; row++) {
+      const y = yStart + row * tileSize;
+      const sprite = row === 0 ? tiles.top : row === rows - 1 ? tiles.bottom : tiles.middle;
+
+      for (let col = 0; col < cols; col++) {
+        const x = col * tileSize - xOffset - tileSize;
+        ctx.drawImage(sprite, x, y, tileSize, tileSize);
+      }
+    }
   }
 
   private installEventHandlers(): void {
     this.subscriptions.push(
       this.eventBus.subscribe("score_changed", (e) => {
         this.score = e.payload.score;
+        this.playSfx(this.visuals?.sounds.score);
       }),
     );
     this.subscriptions.push(
       this.eventBus.subscribe("game_over", () => {
         this.gameOver = true;
+        this.playSfx(this.visuals?.sounds.hurt);
         if (this.runner) {
+          this.runner.setDead(true);
           const body = this.runner.getBody();
           body.setVelocity(Vector2D.zero);
           body.setGravityScale(0);
@@ -164,7 +262,11 @@ export class RunnerScene extends Scene {
   }
 
   private spawnRunner(): void {
-    this.runner = new RunnerEntity(new Vector2D(this.runnerX, this.groundY - 21), this.groundY);
+    this.runner = new RunnerEntity(new Vector2D(this.runnerX, this.groundY - 32), this.groundY, {
+      sprites: this.visuals?.sprites,
+      onJump: () => this.playSfx(this.visuals?.sounds.jump),
+      onLand: () => this.playSfx(this.visuals?.sounds.land),
+    });
     this.root?.addChild(this.runner);
   }
 
@@ -174,14 +276,22 @@ export class RunnerScene extends Scene {
     height?: number;
     speed?: number;
   }): ObstacleEntity {
-    const width = options?.width ?? 20 + Math.floor(Math.random() * 18);
-    const height = options?.height ?? 28 + Math.floor(Math.random() * 40);
+    const stackCount = options?.height
+      ? Math.max(1, Math.min(3, Math.round(options.height / 28)))
+      : ((1 + Math.floor(Math.random() * 3)) as 1 | 2 | 3);
+
+    const width = options?.width ?? 32;
+    const height = options?.height ?? stackCount * 32;
     const x = this.canvas.size.x + width;
     const y = this.groundY - height / 2;
     const spawnPos = options?.position ?? new Vector2D(x, y);
-    const speed = options?.speed ?? 260;
+    const speed = options?.speed ?? this.worldScrollSpeed;
 
-    const obstacle = new ObstacleEntity(spawnPos, width, height, speed);
+    const blockSprite = this.visuals?.obstacleBlocks[Math.max(0, stackCount - 1)] ?? undefined;
+    const obstacle = new ObstacleEntity(spawnPos, width, height, speed, {
+      blockSprite,
+      stackCount,
+    });
     this.obstacles.push(obstacle);
     this.root?.addChild(obstacle);
     return obstacle;
@@ -205,12 +315,30 @@ export class RunnerScene extends Scene {
   private resolveRunnerVsObstacle(): void {
     if (!this.runner) return;
 
+    const runnerBbox = this.runner.getCollider().bbox();
     for (const obstacle of this.obstacles) {
       if (!obstacle.isAwake) continue;
-      if (!this.runner.getCollider().isColliding(obstacle.getCollider())) continue;
+
+      const obstacleBbox = obstacle.getCollider().bbox();
+      const colliding =
+        this.runner.getCollider().isColliding(obstacle.getCollider()) ||
+        this.aabbOverlap(runnerBbox, obstacleBbox);
+      if (!colliding) continue;
+
+      // Set state directly to avoid any event subscription drift and keep HUD/gameplay in sync.
+      this.gameOver = true;
       this.eventBus.publish("game_over", { score: this.score });
       break;
     }
+  }
+
+  private aabbOverlap(
+    a: { x: number; y: number; width: number; height: number },
+    b: { x: number; y: number; width: number; height: number },
+  ): boolean {
+    return (
+      a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+    );
   }
 
   private compactObstacles(): void {
@@ -223,6 +351,7 @@ export class RunnerScene extends Scene {
     this.spawnTimer = 0;
     this.nextSpawnIn = 1.1;
     this.scoredObstacles = new WeakSet<ObstacleEntity>();
+    this.terrainOffset = 0;
 
     for (const obstacle of this.obstacles) {
       obstacle.destroy();
@@ -235,6 +364,16 @@ export class RunnerScene extends Scene {
     }
 
     this.spawnRunner();
+  }
+
+  private playSfx(audio?: HTMLAudioElement): void {
+    if (!audio) return;
+    const instance = audio.cloneNode(true) as HTMLAudioElement;
+    instance.volume = 0.4;
+    instance.currentTime = 0;
+    void instance.play().catch(() => {
+      // Ignore autoplay restrictions in dev/tests.
+    });
   }
 
   public getScore(): number {
@@ -251,7 +390,7 @@ export class RunnerScene extends Scene {
 
   public getRunnerPositionForTest(): Vector2D {
     if (!this.runner) {
-      return new Vector2D(this.runnerX, this.groundY - 21);
+      return new Vector2D(this.runnerX, this.groundY - 32);
     }
     return this.runner.getPosition();
   }

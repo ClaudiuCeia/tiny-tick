@@ -10,6 +10,8 @@ const contentType = (ext: string): string => {
       return "text/html; charset=utf-8";
     case ".css":
       return "text/css; charset=utf-8";
+    case ".svg":
+      return "image/svg+xml; charset=utf-8";
     case ".js":
     case ".mjs":
     case ".ts":
@@ -22,7 +24,8 @@ const contentType = (ext: string): string => {
 };
 
 const toFsPath = (pathname: string): string | null => {
-  const cleaned = normalize(pathname).replace(/^([.][.][/\\])+/, "");
+  const decoded = decodeURIComponent(pathname);
+  const cleaned = normalize(decoded).replace(/^([.][.][/\\])+/, "");
   const fullPath = join(ROOT, cleaned);
   if (!fullPath.startsWith(ROOT)) return null;
   return fullPath;

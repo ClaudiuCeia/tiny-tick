@@ -7,3 +7,4 @@ export {
   type SpriteSheetGridOptions,
   type SpriteSheetTag,
 } from "./AssetManager.ts";
+export { fitRectContain, type DrawRect } from "./sprite.ts";

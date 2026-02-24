@@ -75,7 +75,7 @@ export class RenderSystem {
 
   public render(): void {
     const { context: ctx } = this.canvas;
-    const canvasSize = Vector2D.fromScreen();
+    const canvasSize = this.canvas.size;
 
     const hud: RenderComponent[] = [];
     const renderables = RenderSystem.getRenderables(this.runtime);

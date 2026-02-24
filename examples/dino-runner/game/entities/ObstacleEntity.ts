@@ -8,12 +8,22 @@ import {
   type Vector2D,
 } from "../lib.ts";
 import { ObstacleMoveComponent } from "../components/ObstacleMoveComponent.ts";
+import { ObstacleSpriteRenderComponent } from "../components/ObstacleSpriteRenderComponent.ts";
 import { RectRenderComponent } from "../components/RectRenderComponent.ts";
 
 export class ObstacleEntity extends Entity {
   private readonly collider: CollisionEntity;
 
-  constructor(position: Vector2D, width: number, height: number, speed: number) {
+  constructor(
+    position: Vector2D,
+    width: number,
+    height: number,
+    speed: number,
+    options: {
+      blockSprite?: HTMLImageElement;
+      stackCount?: number;
+    } = {},
+  ) {
     super();
     this.addComponent(new TransformComponent({ position, rotation: 0, scale: 1 }));
     this.addComponent(
@@ -25,7 +35,14 @@ export class ObstacleEntity extends Entity {
       }),
     );
     this.addComponent(new ObstacleMoveComponent(speed));
-    this.addComponent(new RectRenderComponent("#ff6b6b"));
+
+    if (options.blockSprite) {
+      this.addComponent(
+        new ObstacleSpriteRenderComponent(options.blockSprite, options.stackCount ?? 1),
+      );
+    } else {
+      this.addComponent(new RectRenderComponent("#ff6b6b"));
+    }
 
     this.collider = new CollisionEntity(new RectangleCollisionShape(width, height), "center", 2);
     this.addChild(this.collider);

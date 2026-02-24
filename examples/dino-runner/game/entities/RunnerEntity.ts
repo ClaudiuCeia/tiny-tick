@@ -8,13 +8,31 @@ import {
 } from "../lib.ts";
 import { RectRenderComponent } from "../components/RectRenderComponent.ts";
 import { RunnerJumpComponent } from "../components/RunnerJumpComponent.ts";
+import { RunnerSpriteRenderComponent } from "../components/RunnerSpriteRenderComponent.ts";
+
+type RunnerSpriteSet = {
+  idle: HTMLImageElement;
+  jump: HTMLImageElement;
+  walkA: HTMLImageElement;
+  walkB: HTMLImageElement;
+  hit: HTMLImageElement;
+};
 
 export class RunnerEntity extends Entity {
-  public readonly width = 30;
-  public readonly height = 42;
+  public readonly width = 44;
+  public readonly height = 64;
   private readonly collider: CollisionEntity;
+  private dead = false;
 
-  constructor(start: Vector2D, groundY: number) {
+  constructor(
+    start: Vector2D,
+    public readonly groundY: number,
+    options: {
+      sprites?: RunnerSpriteSet;
+      onJump?: () => void;
+      onLand?: () => void;
+    } = {},
+  ) {
     super();
     this.addComponent(new TransformComponent({ position: start, rotation: 0, scale: 1 }));
     this.addComponent(
@@ -25,8 +43,13 @@ export class RunnerEntity extends Entity {
         linearDamping: 0,
       }),
     );
-    this.addComponent(new RunnerJumpComponent(groundY, -460));
-    this.addComponent(new RectRenderComponent("#4ecdc4"));
+    this.addComponent(new RunnerJumpComponent(groundY, -640, options.onJump, options.onLand));
+
+    if (options.sprites) {
+      this.addComponent(new RunnerSpriteRenderComponent(options.sprites));
+    } else {
+      this.addComponent(new RectRenderComponent("#4ecdc4"));
+    }
 
     this.collider = new CollisionEntity(
       new RectangleCollisionShape(this.width, this.height),
@@ -55,5 +78,13 @@ export class RunnerEntity extends Entity {
 
   public getBody(): PhysicsBodyComponent {
     return this.getComponent(PhysicsBodyComponent);
+  }
+
+  public get isDead(): boolean {
+    return this.dead;
+  }
+
+  public setDead(dead: boolean): void {
+    this.dead = dead;
   }
 }

@@ -66,6 +66,14 @@ class TestHudComponent extends HudRenderComponent<Node> {
   }
 }
 
+class CanvasSizeProbeHudComponent extends HudRenderComponent<Node> {
+  public seen: Vector2D | null = null;
+
+  override doRender(_ctx: CanvasRenderingContext2D, _camera: ICamera, canvasSize: Vector2D): void {
+    this.seen = canvasSize;
+  }
+}
+
 beforeEach(() => {
   EcsRuntime.reset();
   (RenderSystem as unknown as { renderables: RenderComponent[] }).renderables = [];
@@ -200,5 +208,20 @@ describe("RenderSystem ordering and registration", () => {
       runtimeB,
     ).render();
     expect(log).toEqual(["B"]);
+  });
+
+  test("passes actual canvas size to render components", () => {
+    const camera = new CameraEntity();
+    camera.awake();
+
+    const owner = new Node();
+    const probe = new CanvasSizeProbeHudComponent(RenderLayer.HUD);
+    owner.addComponent(probe);
+    owner.awake();
+
+    const system = new RenderSystem({ context: createCtx(), size: new Vector2D(321, 123) }, camera);
+    system.render();
+
+    expect(probe.seen).toEqual(new Vector2D(321, 123));
   });
 });
