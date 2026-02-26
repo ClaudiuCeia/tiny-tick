@@ -72,7 +72,7 @@ Run locally:
 - `bun run example:collision-lab`
 - `bun run example:pixel-painter`
 
-## Persistence (brief)
+## Persistence
 
 Persistence is runtime-scoped (`runtime.store`) and opt-in.
 
@@ -80,6 +80,8 @@ Persistence is runtime-scoped (`runtime.store`) and opt-in.
 2. Declare state in components with `this.atom(...)` and `this.ref(...)`.
 3. Register persisted entities with `runtime.registerPersistedEntity(...)`.
 4. Save with `runtime.store.snapshot(...)` and restore with `runtime.loadSnapshot(snapshot)`.
+
+See `examples/pixel-painter` for a minimal autosave flow (`localStorage` + per-pixel save).
 
 ## Assets (runtime-scoped)
 
