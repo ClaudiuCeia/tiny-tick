@@ -2,8 +2,15 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Entity } from "./Entity.ts";
 import { EntityRegistry } from "./EntityRegistry.ts";
 import { EcsRuntime } from "./EcsRuntime.ts";
+import { Component } from "./Component.ts";
 
 class Node extends Entity {}
+class PersistedNode extends Entity {
+  public static type = "persisted-node";
+}
+class PersistedHealth extends Component {
+  public static type = "persisted-health";
+}
 
 beforeEach(() => {
   EcsRuntime.reset();
@@ -53,5 +60,57 @@ describe("EcsRuntime", () => {
     const child = EcsRuntime.runWith(runtimeB, () => new Node());
 
     expect(() => parent.addChild(child)).toThrow("across runtimes");
+  });
+
+  test("runtime has isolated store and persistence services", () => {
+    const runtime = new EcsRuntime(new EntityRegistry());
+    expect(runtime.store.snapshot().version).toBe(1);
+    expect(runtime.persistenceRegistry).toBeDefined();
+    expect(runtime.persistenceLoader).toBeDefined();
+  });
+
+  test("registerPersistedEntity and registerPersistedComponent forward to runtime registry", () => {
+    const runtime = new EcsRuntime(new EntityRegistry());
+    const entityFactory = () => new PersistedNode();
+    const componentFactory = () => new PersistedHealth();
+
+    runtime.registerPersistedEntity(PersistedNode, entityFactory);
+    runtime.registerPersistedComponent(PersistedHealth, componentFactory);
+
+    expect(runtime.persistenceRegistry.getEntityFactory("persisted-node")).toBe(entityFactory);
+    expect(runtime.persistenceRegistry.getComponentFactory("persisted-health")).toBe(
+      componentFactory,
+    );
+  });
+
+  test("loadSnapshot restores store and loads entities via registered factories", () => {
+    const runtime = new EcsRuntime(new EntityRegistry());
+    runtime.registerPersistedEntity(PersistedNode, () => new PersistedNode());
+
+    const result = runtime.loadSnapshot({
+      version: 1,
+      rootSid: "e1",
+      entities: [{ sid: "e1", type: "persisted-node", parentSid: null }],
+      atoms: { "e1:Health:hp": 80 },
+    });
+
+    expect(result).toEqual({ ok: true, errors: [] });
+    expect(runtime.registry.getEntitiesByType(PersistedNode)).toHaveLength(1);
+    expect(runtime.store.getAtomValue<number>("e1:Health:hp")).toBe(80);
+  });
+
+  test("loadSnapshot fails fast when store restore fails", () => {
+    const runtime = new EcsRuntime(new EntityRegistry());
+    const result = runtime.loadSnapshot({
+      version: 2 as unknown as 1,
+      rootSid: "e1",
+      entities: [],
+      atoms: {},
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors[0]?.code).toBe("unsupported_version");
+    }
   });
 });
