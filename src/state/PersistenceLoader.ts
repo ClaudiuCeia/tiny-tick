@@ -12,9 +12,7 @@ export type LoadOptions = {
 export type LoadResult = RestoreResult;
 
 export class PersistenceLoader {
-  public constructor(
-    private readonly registry: PersistenceRegistry,
-  ) {}
+  public constructor(private readonly registry: PersistenceRegistry) {}
 
   public loadIntoRuntime(
     snapshot: Snapshot,

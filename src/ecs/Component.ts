@@ -33,7 +33,10 @@ export abstract class Component<T extends Entity = Entity> implements IComponent
     if (!this.entity || this._storeHandles.length === 0) {
       return;
     }
-    const componentType = getPersistedType(this.constructor as Function & { type?: unknown }, "component");
+    const componentType = getPersistedType(
+      this.constructor as Function & { type?: unknown },
+      "component",
+    );
     const store = this.entity.runtime.store;
     const entityId = this.entity.id;
 

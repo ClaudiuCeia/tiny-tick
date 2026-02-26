@@ -39,9 +39,7 @@ export type RestoreError = {
   path?: string;
 };
 
-export type RestoreResult =
-  | { ok: true; errors: [] }
-  | { ok: false; errors: RestoreError[] };
+export type RestoreResult = { ok: true; errors: [] } | { ok: false; errors: RestoreError[] };
 
 export type SnapshotOptions = {
   sceneId?: string;
