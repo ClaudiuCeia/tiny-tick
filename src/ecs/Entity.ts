@@ -69,6 +69,7 @@ export abstract class Entity implements IWithUpdate, IAwakable {
     this._componentMap.set(component.constructor, component);
     this._components.push(component);
     component.entity = this;
+    component._bindStoreHandles();
     this._runtime.registry.markDirty();
 
     if (this._isAwake && component.awake) {
@@ -100,6 +101,7 @@ export abstract class Entity implements IWithUpdate, IAwakable {
     }
 
     if (toRemove && index !== undefined) {
+      toRemove._unbindStoreHandles();
       toRemove.entity = undefined;
       this._components.splice(index, 1);
       this._runtime.registry.markDirty();
@@ -241,6 +243,7 @@ export abstract class Entity implements IWithUpdate, IAwakable {
 
     for (const component of this._components) {
       component.destroy?.();
+      component._unbindStoreHandles();
       component.entity = undefined;
     }
     this._components = [];

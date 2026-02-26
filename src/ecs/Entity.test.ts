@@ -30,6 +30,22 @@ class AltComponent extends Component {
   override update(_dt: number) {}
 }
 
+class BindingComponent extends Component {
+  bindCount = 0;
+  unbindCount = 0;
+  hp = this.atom("hp", 100);
+
+  override _bindStoreHandles(): void {
+    super._bindStoreHandles();
+    this.bindCount++;
+  }
+
+  override _unbindStoreHandles(): void {
+    super._unbindStoreHandles();
+    this.unbindCount++;
+  }
+}
+
 beforeEach(() => {
   EcsRuntime.reset();
 });
@@ -163,6 +179,18 @@ describe("Entity — destroy", () => {
     expect(c.destroyCount).toBe(1);
   });
 
+  test("destroy() unbinds component store handles", () => {
+    const e = new NodeA();
+    const c = new BindingComponent();
+    e.addComponent(c);
+    e.awake();
+
+    e.destroy();
+
+    expect(c.unbindCount).toBe(1);
+    expect(c.hp._isBound).toBe(false);
+  });
+
   test("destroy() propagates to children", () => {
     const parent = new NodeA();
     const child = new NodeA();
@@ -239,6 +267,15 @@ describe("Entity — components", () => {
     expect(c.entity).toBe(e);
   });
 
+  test("addComponent binds store handles", () => {
+    const e = new NodeA();
+    const c = new BindingComponent();
+    e.addComponent(c);
+
+    expect(c.bindCount).toBe(1);
+    expect(c.hp._isBound).toBe(true);
+  });
+
   test("removeComponent removes it from the entity", () => {
     const e = new NodeA();
     e.addComponent(new CountingComponent());
@@ -253,6 +290,17 @@ describe("Entity — components", () => {
     e.addComponent(c);
     e.removeComponent(CountingComponent);
     expect(c.entity).toBeUndefined();
+  });
+
+  test("removeComponent unbinds store handles", () => {
+    const e = new NodeA();
+    const c = new BindingComponent();
+    e.addComponent(c);
+
+    e.removeComponent(BindingComponent);
+
+    expect(c.unbindCount).toBe(1);
+    expect(c.hp._isBound).toBe(false);
   });
 
   test("can add different component types", () => {
