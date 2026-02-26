@@ -31,6 +31,7 @@ class AltComponent extends Component {
 }
 
 class BindingComponent extends Component {
+  public static type = "binding";
   bindCount = 0;
   unbindCount = 0;
   hp = this.atom("hp", 100);

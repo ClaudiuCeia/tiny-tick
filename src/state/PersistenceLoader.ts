@@ -27,6 +27,7 @@ export class PersistenceLoader {
     }
 
     const sidToEntity = new Map<string, Entity>();
+    const sidToRuntimeId = new Map<string, string>();
     const createdEntities: Entity[] = [];
 
     try {
@@ -38,6 +39,7 @@ export class PersistenceLoader {
           }
           const entity = factory(node) as Entity;
           sidToEntity.set(node.sid, entity);
+          sidToRuntimeId.set(node.sid, entity.id);
           createdEntities.push(entity);
         }
       });
@@ -62,13 +64,26 @@ export class PersistenceLoader {
         parent.addChild(child);
       }
 
+      runtime.store.clear();
       for (const [key, value] of Object.entries(snapshot.atoms)) {
-        if (!this.isRefToken(value)) continue;
-        const error = this.resolveToken(value, sidToEntity, key);
-        if (error) {
+        const mapped = this.mapSnapshotAtomKey(key, sidToRuntimeId);
+        if (!mapped.ok) {
           this.cleanup(createdEntities);
-          return { ok: false, errors: [error] };
+          return { ok: false, errors: [mapped.error] };
         }
+
+        let resolvedValue: unknown = value;
+        if (this.isRefToken(value)) {
+          const resolved = this.resolveToken(value, sidToEntity, key);
+          if (!resolved.ok) {
+            this.cleanup(createdEntities);
+            return { ok: false, errors: [resolved.error] };
+          }
+          resolvedValue = resolved.value;
+        }
+
+        runtime.store.registerAtom(mapped.key, resolvedValue);
+        runtime.store.setAtomValue(mapped.key, resolvedValue);
       }
     } catch (error) {
       this.cleanup(createdEntities);
@@ -84,6 +99,94 @@ export class PersistenceLoader {
     }
 
     return { ok: true, errors: [] };
+  }
+
+  private mapSnapshotAtomKey(
+    snapshotKey: string,
+    sidToRuntimeId: Map<string, string>,
+  ): { ok: true; key: string } | { ok: false; error: RestoreError } {
+    const firstSep = snapshotKey.indexOf(":");
+    const secondSep = snapshotKey.indexOf(":", firstSep + 1);
+
+    if (firstSep <= 0 || secondSep <= firstSep + 1 || secondSep >= snapshotKey.length - 1) {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_payload",
+          message: `Invalid atom key format '${snapshotKey}'.`,
+          path: snapshotKey,
+        },
+      };
+    }
+
+    const sid = snapshotKey.slice(0, firstSep);
+    const componentType = snapshotKey.slice(firstSep + 1, secondSep);
+    const atomName = snapshotKey.slice(secondSep + 1);
+    const runtimeId = sidToRuntimeId.get(sid);
+    if (!runtimeId) {
+      return {
+        ok: false,
+        error: {
+          code: "invalid_payload",
+          message: `Unknown sid '${sid}' in atom key '${snapshotKey}'.`,
+          path: snapshotKey,
+        },
+      };
+    }
+
+    return { ok: true, key: `${runtimeId}:${componentType}:${atomName}` };
+  }
+
+  private resolveToken(
+    token: RefToken,
+    sidToEntity: Map<string, Entity>,
+    path: string,
+  ): { ok: true; value: unknown } | { ok: false; error: RestoreError } {
+    const ref = token.$ref;
+    if (ref.kind === "entity") {
+      const entity = sidToEntity.get(ref.sid);
+      if (!entity) {
+        return {
+          ok: false,
+          error: {
+            code: "dangling_ref",
+            message: `Dangling entity ref '${ref.sid}'.`,
+            path,
+          },
+        };
+      }
+      return { ok: true, value: entity };
+    }
+
+    const entity = sidToEntity.get(ref.entitySid);
+    if (!entity) {
+      return {
+        ok: false,
+        error: {
+          code: "dangling_ref",
+          message: `Dangling component ref entity '${ref.entitySid}'.`,
+          path,
+        },
+      };
+    }
+
+    const component = entity.components.find((c) => {
+      const ctor = c.constructor as Function & { type?: unknown };
+      return typeof ctor.type === "string" && ctor.type === ref.componentType;
+    }) as Component | undefined;
+
+    if (!component) {
+      return {
+        ok: false,
+        error: {
+          code: "dangling_ref",
+          message: `Dangling component ref '${ref.componentType}' on entity '${ref.entitySid}'.`,
+          path,
+        },
+      };
+    }
+
+    return { ok: true, value: component };
   }
 
   private validateGraph(snapshot: Snapshot): RestoreError[] {
@@ -156,48 +259,6 @@ export class PersistenceLoader {
     if (!maybe.$ref || typeof maybe.$ref !== "object") return false;
     const ref = maybe.$ref as { kind?: unknown };
     return ref.kind === "entity" || ref.kind === "component";
-  }
-
-  private resolveToken(
-    token: RefToken,
-    sidToEntity: Map<string, Entity>,
-    path: string,
-  ): RestoreError | null {
-    const ref = token.$ref;
-    if (ref.kind === "entity") {
-      if (!sidToEntity.has(ref.sid)) {
-        return {
-          code: "dangling_ref",
-          message: `Dangling entity ref '${ref.sid}'.`,
-          path,
-        };
-      }
-      return null;
-    }
-
-    const entity = sidToEntity.get(ref.entitySid);
-    if (!entity) {
-      return {
-        code: "dangling_ref",
-        message: `Dangling component ref entity '${ref.entitySid}'.`,
-        path,
-      };
-    }
-
-    const component = entity.components.find((c) => {
-      const ctor = c.constructor as Function & { type?: unknown };
-      return typeof ctor.type === "string" && ctor.type === ref.componentType;
-    }) as Component | undefined;
-
-    if (!component) {
-      return {
-        code: "dangling_ref",
-        message: `Dangling component ref '${ref.componentType}' on entity '${ref.entitySid}'.`,
-        path,
-      };
-    }
-
-    return null;
   }
 
   private cleanup(createdEntities: Entity[]): void {

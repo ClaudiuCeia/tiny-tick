@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { RefAtom } from "./RefAtom.ts";
+import { StateStore } from "./StateStore.ts";
 
 describe("RefAtom", () => {
   test("returns default reference", () => {
@@ -21,9 +22,12 @@ describe("RefAtom", () => {
 
   test("bind and unbind update internal bound state", () => {
     const ref = new RefAtom<{ id: string } | null>("target", null);
+    const store = new StateStore();
+
     expect(ref._isBound).toBe(false);
-    ref._bind();
+    ref._bind(store, "e1:targeting:target");
     expect(ref._isBound).toBe(true);
+    expect(store.getAtomValue("e1:targeting:target")).toBeNull();
     ref._unbind();
     expect(ref._isBound).toBe(false);
   });

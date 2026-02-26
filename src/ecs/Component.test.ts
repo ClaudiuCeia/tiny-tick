@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { Entity } from "./Entity.ts";
 import { Component } from "./Component.ts";
 
+class Node extends Entity {}
+
 class StatsComponent extends Component {
+  public static type = "stats";
   hp = this.atom("hp", 100);
   mana = this.atom("mana", 30);
   target = this.ref<{ id: string } | null>("target", null);
@@ -32,12 +36,12 @@ describe("Component atom/ref declaration", () => {
   });
 
   test("bind and unbind propagate to declared handles", () => {
+    const entity = new Node();
     const component = new StatsComponent();
-
     expect(component.hp._isBound).toBe(false);
     expect(component.target._isBound).toBe(false);
 
-    component._bindStoreHandles();
+    entity.addComponent(component);
     expect(component.hp._isBound).toBe(true);
     expect(component.target._isBound).toBe(true);
 

@@ -10,6 +10,21 @@ class PersistedNode extends Entity {
 }
 class PersistedHealth extends Component {
   public static type = "persisted-health";
+  hp = this.atom("hp", 100);
+}
+
+class Targeter extends Component {
+  public static type = "targeter";
+  target = this.ref<Entity | null>("target", null);
+}
+
+class PersistedWithTarget extends Entity {
+  public static type = "persisted-with-target";
+
+  public constructor() {
+    super();
+    this.addComponent(new Targeter());
+  }
 }
 
 beforeEach(() => {
@@ -85,18 +100,52 @@ describe("EcsRuntime", () => {
 
   test("loadSnapshot restores store and loads entities via registered factories", () => {
     const runtime = new EcsRuntime(new EntityRegistry());
+    class PersistedWithHealth extends Entity {
+      public static type = "persisted-with-health";
+
+      public constructor() {
+        super();
+        this.addComponent(new PersistedHealth());
+      }
+    }
+
+    runtime.registerPersistedEntity(PersistedWithHealth, () => new PersistedWithHealth());
+
+    const result = runtime.loadSnapshot({
+      version: 1,
+      rootSid: "e1",
+      entities: [{ sid: "e1", type: "persisted-with-health", parentSid: null }],
+      atoms: { "e1:persisted-health:hp": 80 },
+    });
+
+    expect(result).toEqual({ ok: true, errors: [] });
+    const entities = runtime.registry.getEntitiesByType(PersistedWithHealth);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]!.getComponent(PersistedHealth).hp.get()).toBe(80);
+  });
+
+  test("loadSnapshot hydrates entity refs end-to-end", () => {
+    const runtime = new EcsRuntime(new EntityRegistry());
+    runtime.registerPersistedEntity(PersistedWithTarget, () => new PersistedWithTarget());
     runtime.registerPersistedEntity(PersistedNode, () => new PersistedNode());
 
     const result = runtime.loadSnapshot({
       version: 1,
       rootSid: "e1",
-      entities: [{ sid: "e1", type: "persisted-node", parentSid: null }],
-      atoms: { "e1:Health:hp": 80 },
+      entities: [
+        { sid: "e1", type: "persisted-with-target", parentSid: null },
+        { sid: "e2", type: "persisted-node", parentSid: null },
+      ],
+      atoms: {
+        "e1:targeter:target": { $ref: { kind: "entity", sid: "e2" } },
+      },
     });
 
     expect(result).toEqual({ ok: true, errors: [] });
-    expect(runtime.registry.getEntitiesByType(PersistedNode)).toHaveLength(1);
-    expect(runtime.store.getAtomValue<number>("e1:Health:hp")).toBe(80);
+    const owner = runtime.registry.getEntitiesByType(PersistedWithTarget)[0]!;
+    const targetEntity = runtime.registry.getEntitiesByType(PersistedNode)[0]!;
+    const targeter = owner.getComponent(Targeter);
+    expect(targeter.target.get()).toBe(targetEntity);
   });
 
   test("loadSnapshot fails fast when store restore fails", () => {
