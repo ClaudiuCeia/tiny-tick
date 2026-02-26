@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tick - pixel painter</title>
+    <style>
+      :root {
+        --bg: #f6f4ee;
+        --ink: #1e2a39;
+        --panel: #fffef9;
+        --accent: #0f766e;
+        --danger: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 20%, #fef3c7 0%, transparent 45%),
+          radial-gradient(circle at 85% 85%, #dbeafe 0%, transparent 48%),
+          var(--bg);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .app {
+        width: min(92vw, 760px);
+        background: var(--panel);
+        border: 2px solid #d4d4d4;
+        border-radius: 16px;
+        box-shadow: 0 14px 34px rgb(30 41 59 / 12%);
+        padding: 18px;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .toolbar-left {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .status {
+        font-size: 13px;
+        color: #475569;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 9px 12px;
+        cursor: pointer;
+      }
+
+      #clear-btn {
+        background: var(--danger);
+        color: white;
+      }
+
+      #clear-btn:hover {
+        filter: brightness(0.95);
+      }
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+      }
+
+      canvas {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        max-width: 640px;
+        border: 2px solid #d6d3d1;
+        border-radius: 12px;
+        background: white;
+        image-rendering: pixelated;
+        display: block;
+        margin-inline: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <label for="color-picker"
+            >Color <input id="color-picker" type="color" value="#0f766e"
+          /></label>
+          <button id="clear-btn" type="button">Clear</button>
+        </div>
+        <div id="status" class="status">Ready</div>
+      </div>
+      <canvas id="canvas" width="640" height="640"></canvas>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
