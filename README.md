@@ -70,6 +70,16 @@ Run locally:
 - `bun run example:bouncy-arena`
 - `bun run example:dino-runner`
 - `bun run example:collision-lab`
+- `bun run example:pixel-painter`
+
+## Persistence (brief)
+
+Persistence is runtime-scoped (`runtime.store`) and opt-in.
+
+1. Add `static type` on persisted entities/components.
+2. Declare state in components with `this.atom(...)` and `this.ref(...)`.
+3. Register persisted entities with `runtime.registerPersistedEntity(...)`.
+4. Save with `runtime.store.snapshot(...)` and restore with `runtime.loadSnapshot(snapshot)`.
 
 ## Assets (runtime-scoped)
 
