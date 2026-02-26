@@ -11,3 +11,4 @@ export * from "./physics/index.ts";
 export * from "./assets/index.ts";
 export * from "./utils/index.ts";
 export * from "./devtools/index.ts";
+export * from "./state/index.ts";
