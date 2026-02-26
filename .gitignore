@@ -9,6 +9,7 @@ dist
 # local notes/trackers
 NEXT.md
 BUGS.md
+agent_docs/
 
 # code coverage
 coverage
